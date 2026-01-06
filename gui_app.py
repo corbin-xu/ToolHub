@@ -2907,12 +2907,10 @@ class LabelDialog(QDialog):
         
         import_btn = QPushButton("导入批处理模板")
         import_btn.clicked.connect(self.import_excel)
-        import_btn.setMinimumWidth(120)
         top_button_layout.addWidget(import_btn)
         
         download_template_btn = QPushButton("下载批处理模板")
         download_template_btn.clicked.connect(self.download_template)
-        download_template_btn.setMinimumWidth(120)
         top_button_layout.addWidget(download_template_btn)
         
         top_button_layout.addStretch()
