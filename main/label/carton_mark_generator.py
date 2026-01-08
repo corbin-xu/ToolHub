@@ -29,7 +29,7 @@ class CartonMarkGenerator:
         if template_path is None:
             # 使用相对路径查找模板
             current_dir = Path(__file__).parent.parent.parent
-            template_path = current_dir / "templates" / "default" / "carton_mark.pld"
+            template_path = current_dir / "templates" / "carton_mark.pld"
         
         self.template_path = str(template_path)
         self.content = None

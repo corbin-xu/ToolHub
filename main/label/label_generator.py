@@ -161,13 +161,14 @@ class LabelGenerator:
             return True
         return False
     
-    def generate_pld(self, output_dir: str = None, seq_num: str = None) -> bool:
+    def generate_pld(self, output_dir: str = None, seq_num: str = None, use_seq_prefix: bool = True) -> bool:
         """
         生成PLD文件
         
         Args:
             output_dir: 输出目录（如果为 None，使用桌面）
             seq_num: 序号（如果为 None，从 SN 中解析）
+            use_seq_prefix: 是否在文件名中添加序号前缀（默认 True）
             
         Returns:
             是否生成成功
@@ -197,9 +198,12 @@ class LabelGenerator:
             sn_full = self.label_data.get('sn', '')
             sn_len = len(sn_full)
             
-            # 生成文件名：序号.产品名称.pld
+            # 生成文件名
             product_name = self.label_data.get('product_name', 'label')
-            filename = f"{seq_num}.{product_name}.pld"
+            if use_seq_prefix:
+                filename = f"{seq_num}.{product_name}.pld"
+            else:
+                filename = f"{product_name}.pld"
             output_path = os.path.join(output_dir, filename)
             print(f"输出路径: {output_path}")
             

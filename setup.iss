@@ -11,8 +11,6 @@ AllowNoIcons=yes
 LicenseFile=LICENSE
 OutputDir=dist
 OutputBaseFilename=ToolHub-1.0-setup
-SetupIconFile=icon.ico
-UninstallDisplayIcon={app}\ToolHub.exe
 Compression=zip
 SolidCompression=yes
 PrivilegesRequired=lowest
@@ -20,12 +18,15 @@ ArchitecturesInstallIn64BitMode=x64
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
+Name: "chinesesimplified"; MessagesFile: "compiler:ChineseSimplified.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
 Source: "dist\ToolHub.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "templates\*"; DestDir: "{app}\templates"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "config.json"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\ToolHub"; Filename: "{app}\ToolHub.exe"
