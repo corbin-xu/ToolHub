@@ -55,6 +55,158 @@ class DataLoadThread(QThread):
             self.finished.emit()
 
 
+class ExportThread(QThread):
+    """导出线程"""
+    finished = pyqtSignal()
+    error = pyqtSignal(str)
+    success = pyqtSignal(str)
+    
+    def __init__(self, gui_instance, export_folder, label_type, export_date, export_year, export_label, export_box, export_order):
+        super().__init__()
+        self.gui = gui_instance
+        self.export_folder = export_folder
+        self.label_type = label_type
+        self.export_date = export_date
+        self.export_year = export_year
+        self.export_label = export_label
+        self.export_box = export_box
+        self.export_order = export_order
+    
+    def run(self):
+        try:
+            if self.export_label:
+                self.gui.generate_labels_from_workbook(
+                    self.export_folder, self.label_type, self.export_date, self.export_year
+                )
+            
+            if self.export_box:
+                self.gui.generate_carton_marks_from_workbook(
+                    self.export_folder, self.label_type, self.export_date, self.export_year
+                )
+            
+            if self.export_order:
+                self.gui.generate_order_form(self.label_type, self.export_date, self.export_year)
+            
+            self.success.emit("导出完成")
+        except Exception as e:
+            self.error.emit(f"导出失败: {str(e)}")
+        finally:
+            self.finished.emit()
+
+
+class PropellerFilenameDialog(QDialog):
+    """螺旋桨文件名输入对话框 - 批量输入"""
+    
+    def __init__(self, parent, new_skus, existing_filenames):
+        super().__init__(parent)
+        self.setWindowTitle("输入螺旋桨文件名")
+        self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint)
+        self.setModal(True)
+        self.setMinimumWidth(500)
+        
+        self.sku_inputs = {}  # 存储 SKU -> 输入框的映射
+        self.existing_filenames = existing_filenames  # 已有的文件名集合
+        
+        layout = QVBoxLayout()
+        
+        # 标签
+        label = QLabel("请为以下螺旋桨输入文件名：")
+        layout.addWidget(label)
+        
+        # 创建滚动区域用于多个输入框
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_widget = QWidget()
+        scroll_layout = QVBoxLayout()
+        
+        # 为每个新SKU创建一行（商品编号 + 输入框）
+        for sku in new_skus:
+            row_layout = QHBoxLayout()
+            
+            # 左侧：商品编号标签
+            sku_label = QLabel(sku)
+            sku_label.setMinimumWidth(150)
+            row_layout.addWidget(sku_label)
+            
+            # 右侧：输入框
+            text_input = QLineEdit()
+            text_input.setText(sku)  # 默认值为SKU本身
+            row_layout.addWidget(text_input)
+            
+            self.sku_inputs[sku] = text_input
+            scroll_layout.addLayout(row_layout)
+        
+        scroll_widget.setLayout(scroll_layout)
+        scroll_area.setWidget(scroll_widget)
+        layout.addWidget(scroll_area)
+        
+        # 确定按钮
+        button_layout = QHBoxLayout()
+        button_layout.addStretch()
+        ok_button = QPushButton("确定")
+        ok_button.clicked.connect(self.validate_and_accept)
+        button_layout.addWidget(ok_button)
+        layout.addLayout(button_layout)
+        
+        self.setLayout(layout)
+    
+    def validate_and_accept(self):
+        """验证输入，检查是否有重名"""
+        filenames = {}
+        empty_skus = []
+        duplicates_with_existing = []
+        duplicates_within_new = []
+        
+        for sku, input_widget in self.sku_inputs.items():
+            filename = input_widget.text().strip()
+            
+            if not filename:
+                empty_skus.append(sku)
+                continue
+            
+            # 检查是否与已有的映射重名
+            if filename in self.existing_filenames:
+                duplicates_with_existing.append(f"{sku} -> {filename}")
+            
+            # 检查是否与新增的其他文件名重复
+            if filename in filenames.values():
+                duplicates_within_new.append(f"{sku} -> {filename}")
+            
+            filenames[sku] = filename
+        
+        # 处理为空的情况
+        if empty_skus:
+            msg = "以下商品编号的文件名为空：\n" + "\n".join(empty_skus) + "\n\n是否跳过这些商品编号？"
+            reply = QMessageBox.question(self, "文件名为空", msg)
+            if reply != QMessageBox.Yes:
+                return
+            # 从sku_inputs中移除为空的项
+            for sku in empty_skus:
+                del self.sku_inputs[sku]
+        
+        # 检查与已有映射的重名
+        if duplicates_with_existing:
+            msg = "以下文件名与已有映射重名，请重新填写：\n" + "\n".join(duplicates_with_existing)
+            QMessageBox.warning(self, "重名警告", msg)
+            return
+        
+        # 检查新增文件名之间的重复
+        if duplicates_within_new:
+            msg = "以下文件名在新增的商品编号中重复，请重新填写：\n" + "\n".join(duplicates_within_new)
+            QMessageBox.warning(self, "重复警告", msg)
+            return
+        
+        # 验证通过，接受对话框
+        self.accept()
+    
+    def get_filenames(self):
+        """返回 SKU -> 文件名的映射"""
+        result = {}
+        for sku, input_widget in self.sku_inputs.items():
+            result[sku] = input_widget.text()
+        return result
+
+
 class KeywordAnalyzerGUI(QMainWindow):
     """关键词分析工具 GUI"""
     
@@ -278,7 +430,7 @@ class KeywordAnalyzerGUI(QMainWindow):
             if detected_date:
                 self.export_date_input.setText(detected_date)
             if detected_year:
-                self.export_year_input.setCurrentText(detected_year)
+                self.export_year_input.setText(detected_year)
             
             # 检查工作表是否匹配设置
             self.check_sheet_mapping(detected_type, workbook)
@@ -572,6 +724,61 @@ class KeywordAnalyzerGUI(QMainWindow):
             print(f"[DEBUG] 从 SN 中提取年份失败: {str(e)}")
             return ""
     
+    def parse_sn(self, sn):
+        """
+        从SN序列号中解析出各个部分
+        
+        SG格式: SG + 序号(1-3位) + 年份(2位) + 日期(4位) + 批次(3位)
+        NB格式: NB + 序号(1-3位) + 年份(4位) + 日期(4位) + 批次(3位)
+        
+        Args:
+            sn: 完整的SN序列号，如 "SG001202601001" 或 "NB001202501001"
+            
+        Returns:
+            dict: 包含 prefix, seq, year, date, batch 的字典
+        """
+        if not sn or len(sn) < 2:
+            return None
+        
+        prefix = sn[:2]
+        rest = sn[2:]
+        
+        try:
+            if prefix in ["SG", "SN"]:
+                # SG/SN: 序号(1-3位) + 年份(2位) + 日期(4位) + 批次(3位)
+                # 从后往前: 批次(3) + 日期(4) + 年份(2) + 序号(剩余)
+                batch = rest[-3:]
+                date = rest[-7:-3]
+                year = rest[-9:-7]
+                seq = rest[:-9]
+                
+                return {
+                    'prefix': prefix,
+                    'seq': seq,
+                    'year': year,
+                    'date': date,
+                    'batch': batch
+                }
+            elif prefix == "NB":
+                # NB: 序号(1-3位) + 年份(4位) + 日期(4位) + 批次(3位)
+                # 从后往前: 批次(3) + 日期(4) + 年份(4) + 序号(剩余)
+                batch = rest[-3:]
+                date = rest[-7:-3]
+                year = rest[-11:-7]
+                seq = rest[:-11]
+                
+                return {
+                    'prefix': prefix,
+                    'seq': seq,
+                    'year': year,
+                    'date': date,
+                    'batch': batch
+                }
+        except:
+            return None
+        
+        return None
+    
     def on_type_changed(self, type_name):
         """筛选类型改变时的处理"""
         # 根据类型自动设置 SN 前缀
@@ -586,7 +793,7 @@ class KeywordAnalyzerGUI(QMainWindow):
             self.label_sn_prefix.setEnabled(True)
             self.label_sn_seq.setEnabled(True)
             self.label_sn_year.setEnabled(True)
-            self.label_sn_year.setCurrentText("2026")  # 恢复默认值
+            self.label_sn_year.setText("2026")  # 恢复默认值
             self.label_sn_date.setEnabled(True)
             self.label_sn_batch.setEnabled(True)
             self.label_sn_batch.setText("001")  # 恢复默认值
@@ -601,7 +808,7 @@ class KeywordAnalyzerGUI(QMainWindow):
             self.label_sn_prefix.setEnabled(True)
             self.label_sn_seq.setEnabled(True)
             self.label_sn_year.setEnabled(True)
-            self.label_sn_year.setCurrentText("2026")  # 恢复默认值
+            self.label_sn_year.setText("2026")  # 恢复默认值
             self.label_sn_date.setEnabled(True)
             self.label_sn_batch.setEnabled(True)
             self.label_sn_batch.setText("001")  # 恢复默认值
@@ -616,7 +823,7 @@ class KeywordAnalyzerGUI(QMainWindow):
             self.label_sn_seq.setEnabled(False)
             self.label_sn_seq.clear()
             self.label_sn_year.setEnabled(False)
-            self.label_sn_year.setCurrentIndex(-1)  # 空选
+            self.label_sn_year.clear()  # 清空填写框
             self.label_sn_date.setEnabled(True)  # 日期保持启用
             self.label_sn_batch.setEnabled(False)
             self.label_sn_batch.clear()
@@ -751,16 +958,12 @@ class KeywordAnalyzerGUI(QMainWindow):
         
         # 年份
         preview_options_layout.addWidget(QLabel("年份:"))
-        self.export_year_input = QComboBox()
-        # 生成年份列表：2026到当前年份（倒序，最新的在前）
+        self.export_year_input = QLineEdit()
+        self.export_year_input.setPlaceholderText("YYYY")
+        self.export_year_input.setMaximumWidth(80)
         import datetime
         current_year = datetime.datetime.now().year
-        years = [str(year) for year in range(current_year, 2025, -1)]
-        self.export_year_input.addItems(years)
-        # 默认选择当前年份
-        self.export_year_input.setCurrentText(str(current_year))
-        self.export_year_input.setMinimumWidth(80)
-        self.export_year_input.setMaximumWidth(80)
+        self.export_year_input.setText(str(current_year))
         preview_options_layout.addWidget(self.export_year_input)
         
         preview_options_layout.addSpacing(10)  # 四组之间的间距
@@ -966,6 +1169,8 @@ class KeywordAnalyzerGUI(QMainWindow):
     
     def export_label_box(self):
         """导出标签和箱唛文件"""
+        print("[DEBUG] 开始导出...")
+        
         # 检查是否导入了文件
         if not self.current_excel_file or not self.current_excel_workbook:
             QMessageBox.warning(self, "警告", "请先导入Excel文件")
@@ -977,22 +1182,30 @@ class KeywordAnalyzerGUI(QMainWindow):
             QMessageBox.warning(self, "警告", "请先选择类型")
             return
         
+        print(f"[DEBUG] label_type={label_type}")
+        
         # 检查是否输入了日期
         export_date = self.export_date_input.text().strip()
         if not export_date:
             QMessageBox.warning(self, "警告", "请输入日期（MMDD 格式）")
             return
         
+        print(f"[DEBUG] export_date={export_date}")
+        
         # 检查是否输入了年份
-        export_year = self.export_year_input.currentText().strip()
+        export_year = self.export_year_input.text().strip()
         if not export_year:
-            QMessageBox.warning(self, "警告", "请选择年份")
+            QMessageBox.warning(self, "警告", "请输入年份（YYYY 格式）")
             return
+        
+        print(f"[DEBUG] export_year={export_year}")
         
         # 检查是否勾选了输出内容
         export_label = self.output_label_checkbox.isChecked()
         export_box = self.output_box_checkbox.isChecked()
         export_order = self.output_order_checkbox.isChecked()
+        
+        print(f"[DEBUG] export_label={export_label}, export_box={export_box}, export_order={export_order}")
         
         if not export_label and not export_box and not export_order:
             QMessageBox.warning(self, "警告", "请至少勾选一个输出内容")
@@ -1000,6 +1213,7 @@ class KeywordAnalyzerGUI(QMainWindow):
         
         try:
             desktop_path = os.path.expanduser("~/Desktop")
+            print(f"[DEBUG] desktop_path={desktop_path}")
             
             # 如果同时勾选标签和箱唛，放在同一个文件夹下
             if export_label and export_box:
@@ -1016,7 +1230,9 @@ class KeywordAnalyzerGUI(QMainWindow):
                 if not os.path.exists(label_folder):
                     os.makedirs(label_folder)
                 
+                print(f"[DEBUG] 开始生成标签到: {label_folder}")
                 self.generate_labels_from_workbook(label_folder, label_type, export_date, export_year)
+                print(f"[DEBUG] 标签生成完成")
                 
                 # 箱唛文件夹
                 box_folder_name = f"{export_date}-{label_type}箱唛"
@@ -1025,7 +1241,9 @@ class KeywordAnalyzerGUI(QMainWindow):
                 if not os.path.exists(box_folder):
                     os.makedirs(box_folder)
                 
+                print(f"[DEBUG] 开始生成箱唛到: {box_folder}")
                 self.generate_carton_marks_from_workbook(box_folder, label_type, export_date, export_year)
+                print(f"[DEBUG] 箱唛生成完成")
             else:
                 # 导出标签
                 if export_label:
@@ -1035,7 +1253,9 @@ class KeywordAnalyzerGUI(QMainWindow):
                     if not os.path.exists(export_folder):
                         os.makedirs(export_folder)
                     
+                    print(f"[DEBUG] 开始生成标签到: {export_folder}")
                     self.generate_labels_from_workbook(export_folder, label_type, export_date, export_year)
+                    print(f"[DEBUG] 标签生成完成")
                 
                 # 导出箱唛
                 if export_box:
@@ -1045,20 +1265,52 @@ class KeywordAnalyzerGUI(QMainWindow):
                     if not os.path.exists(export_folder):
                         os.makedirs(export_folder)
                     
+                    print(f"[DEBUG] 开始生成箱唛到: {export_folder}")
                     self.generate_carton_marks_from_workbook(export_folder, label_type, export_date, export_year)
+                    print(f"[DEBUG] 箱唛生成完成")
             
             # 导出预定表
             if export_order:
+                print(f"[DEBUG] 开始生成预定表")
                 self.generate_order_form(label_type, export_date, export_year)
+                print(f"[DEBUG] 预定表生成完成")
+            
+            print("[DEBUG] 导出完成")
+            QMessageBox.information(self, "成功", "导出完成")
         
         except Exception as e:
+            print(f"[DEBUG] 导出出错: {str(e)}")
+            import traceback
+            traceback.print_exc()
             QMessageBox.critical(self, "错误", f"导出出错: {str(e)}")
     
     def generate_labels_from_workbook(self, export_folder, label_type, export_date, export_year):
-        """从工作表中读取数据并生成标签"""
+        """从工作表中读取数据并生成标签（使用 default 模板）"""
         try:
+            print(f"[DEBUG] generate_labels_from_workbook 开始: export_folder={export_folder}, label_type={label_type}")
+            
             import shutil
+            import pathlib
             import re
+            from main.label.label_generator import LabelGenerator
+            
+            # 保存原始的螺旋桨映射，用于后续比较
+            original_propeller_mapping = dict(self.sheet_mapping.get("螺旋桨", {}))
+            new_propeller_mappings = {}  # 追踪新添加的映射
+            
+            # 获取 default 模板路径
+            gui_dir = pathlib.Path(__file__).resolve().parent
+            default_templates = {
+                "label_12": gui_dir / "templates" / "label_12.pld",
+                "label_13": gui_dir / "templates" / "label_13.pld",
+                "label_14": gui_dir / "templates" / "label_14.pld",
+                "label_15": gui_dir / "templates" / "label_15.pld",
+                "label_16": gui_dir / "templates" / "label_16.pld",
+                "label_propeller": gui_dir / "templates" / "label_propeller.pld",
+            }
+            
+            print(f"[DEBUG] sheet_mapping keys: {list(self.sheet_mapping.keys())}")
+            print(f"[DEBUG] label_type in sheet_mapping: {label_type in self.sheet_mapping}")
             
             # 获取对应类型的工作表
             if label_type not in self.sheet_mapping:
@@ -1066,157 +1318,272 @@ class KeywordAnalyzerGUI(QMainWindow):
                 return
             
             brands = self.sheet_mapping[label_type]
+            print(f"[DEBUG] brands: {brands}")
             
-            # 第一阶段：扫描所有行，检测重复文件
-            print(f"[DEBUG] 第一阶段：扫描重复文件...")
-            duplicate_files = set()
-            file_to_rows = {}  # 记录每个文件对应的行
-            
-            if label_type != "螺旋桨":
-                for brand, sheets in brands.items():
-                    for sheet_name in sheets:
-                        if sheet_name not in self.current_excel_workbook.sheetnames:
-                            continue
-                        
-                        ws = self.current_excel_workbook[sheet_name]
-                        
-                        if len(sheets) > 1:
-                            sheet_folder = os.path.join(export_folder, sheet_name)
-                        else:
-                            sheet_folder = os.path.join(export_folder, brand)
-                        
-                        for row in range(2, ws.max_row + 1):
-                            template_filename = ws.cell(row, 5).value
-                            if not template_filename:
-                                continue
-                            
-                            template_filename = str(template_filename).strip()
-                            
-                            if template_filename.startswith("="):
-                                template_filename = self.evaluate_vlookup_formula(template_filename, self.current_excel_workbook, ws)
-                                if not template_filename:
-                                    continue
-                            
-                            output_filename = f"{template_filename}.pld"
-                            output_path = os.path.join(sheet_folder, output_filename)
-                            
-                            # 检查文件是否已存在
-                            if os.path.exists(output_path):
-                                duplicate_files.add(output_path)
-                                if output_path not in file_to_rows:
-                                    file_to_rows[output_path] = []
-                                file_to_rows[output_path].append(row)
-            
-            # 如果有重复文件，询问用户是否覆盖
-            if duplicate_files:
-                msg = f"检测到 {len(duplicate_files)} 个重复文件:\n\n"
-                for i, file_path in enumerate(sorted(duplicate_files)):
-                    if i < 5:
-                        msg += f"  • {os.path.basename(file_path)}\n"
-                if len(duplicate_files) > 5:
-                    msg += f"  ... 还有 {len(duplicate_files) - 5} 个\n"
-                msg += f"\n是否全部覆盖?"
-                
-                reply = QMessageBox.question(self, "重复文件提示", msg, QMessageBox.Yes | QMessageBox.No)
-                if reply == QMessageBox.No:
-                    QMessageBox.information(self, "已取消", "导出已取消")
-                    return
-            
-            # 第二阶段：生成文件
-            print(f"[DEBUG] 第二阶段：生成文件...")
             total_count = 0
             generated_count = 0
-            missing_templates = {}
             skipped_rows = []
             
+            # 螺旋桨使用 3C 的品牌列表
             if label_type == "螺旋桨":
-                self.generate_propeller_labels(export_folder, export_date)
-            else:
-                for brand, sheets in brands.items():
-                    print(f"[DEBUG] 处理品牌: {brand}")
+                brands = self.sheet_mapping.get("3C", {})
+                print(f"[DEBUG] 螺旋桨使用 3C 品牌: {brands}")
+            
+            # 第一步：预扫描，收集所有新的螺旋桨商品编号
+            new_propeller_skus = []
+            propeller_mapping = self.sheet_mapping.get("螺旋桨", {})
+            
+            # 总是扫描所有工作表中的螺旋桨商品编号（69码为空且商品编号是纯数字的行）
+            print(f"[DEBUG] 开始预扫描螺旋桨商品编号...")
+            scan_brands = self.sheet_mapping.get("3C", {}) if label_type == "螺旋桨" else self.sheet_mapping.get(label_type, {})
+            
+            for brand, sheets in scan_brands.items():
+                for sheet_name in sheets:
+                    if sheet_name not in self.current_excel_workbook.sheetnames:
+                        continue
                     
-                    for sheet_name in sheets:
-                        if sheet_name not in self.current_excel_workbook.sheetnames:
-                            print(f"[DEBUG] 工作表不存在: {sheet_name}")
+                    ws = self.current_excel_workbook[sheet_name]
+                    for row in range(2, ws.max_row + 1):
+                        sku = str(ws.cell(row, 1).value or "").strip()
+                        code69 = str(ws.cell(row, 3).value or "").strip()
+                        
+                        if not sku:
                             continue
                         
-                        ws = self.current_excel_workbook[sheet_name]
-                        print(f"[DEBUG] 处理工作表: {sheet_name}")
+                        # 判断是否为螺旋桨：69码为空 且 商品编号是纯数字
+                        is_propeller = (not code69 or not code69.startswith("69")) and sku.isdigit()
                         
-                        if len(sheets) > 1:
-                            sheet_folder = os.path.join(export_folder, sheet_name)
-                        else:
-                            sheet_folder = os.path.join(export_folder, brand)
+                        if is_propeller and sku not in propeller_mapping and sku not in new_propeller_skus:
+                            new_propeller_skus.append(sku)
+                            print(f"[DEBUG] 发现新的螺旋桨商品编号: {sku}")
+            
+            # 如果有新的螺旋桨商品编号，弹出对话框让用户输入文件名
+            if new_propeller_skus:
+                print(f"[DEBUG] 有 {len(new_propeller_skus)} 个新的螺旋桨商品编号，弹出对话框")
+                # 获取已有的文件名集合（用于检查重名）
+                existing_filenames = set(propeller_mapping.values())
+                dialog = PropellerFilenameDialog(self, new_propeller_skus, existing_filenames)
+                ok = dialog.exec() == QDialog.DialogCode.Accepted
+                
+                if ok:
+                    filenames = dialog.get_filenames()
+                    # 保存新的映射
+                    if "螺旋桨" not in self.sheet_mapping:
+                        self.sheet_mapping["螺旋桨"] = {}
+                    
+                    for sku, filename in filenames.items():
+                        if filename:  # 只保存非空的文件名
+                            self.sheet_mapping["螺旋桨"][sku] = filename
+                            new_propeller_mappings[sku] = filename
+                            print(f"[DEBUG] 保存新的螺旋桨映射: {sku} -> {filename}")
+                    
+                    self.save_sheet_mapping()
+                else:
+                    print(f"[DEBUG] 用户取消了文件名输入")
+                    return
+            
+            print(f"[DEBUG] 开始遍历品牌...")
+            for brand, sheets in brands.items():
+                print(f"[DEBUG] 处理品牌: {brand}, sheets: {sheets}")
+                
+                for sheet_name in sheets:
+                    if sheet_name not in self.current_excel_workbook.sheetnames:
+                        print(f"[DEBUG] 工作表不存在: {sheet_name}")
+                        continue
+                    
+                    ws = self.current_excel_workbook[sheet_name]
+                    print(f"[DEBUG] 处理工作表: {sheet_name}")
+                    
+                    if len(sheets) > 1:
+                        sheet_folder = os.path.join(export_folder, sheet_name)
+                    else:
+                        sheet_folder = os.path.join(export_folder, brand)
+                    
+                    if not os.path.exists(sheet_folder):
+                        os.makedirs(sheet_folder)
+                    
+                    for row in range(2, ws.max_row + 1):
+                        # 检查是否需要跳过红色文字行
+                        rule_key = f"{brand}|{sheet_name}"
+                        should_skip_red = self.sheet_rules.get(label_type, {}).get(rule_key) == "skip_red_text"
                         
-                        if not os.path.exists(sheet_folder):
-                            os.makedirs(sheet_folder)
+                        print(f"[DEBUG] 行{row}：rule_key={rule_key}, should_skip_red={should_skip_red}")
                         
-                        for row in range(2, ws.max_row + 1):
-                            template_filename = ws.cell(row, 5).value
+                        if should_skip_red:
+                            # 检查该行是否为红色文字
+                            sku_cell = ws.cell(row, 1)
+                            is_red = False
                             
-                            if not template_filename:
+                            if sku_cell.font and sku_cell.font.color:
+                                color = sku_cell.font.color
+                                print(f"[DEBUG] 行{row}：color={color}, color.rgb={getattr(color, 'rgb', None)}, color.type={getattr(color, 'type', None)}")
+                                
+                                # 检查是否为红色
+                                if hasattr(color, 'rgb') and color.rgb:
+                                    color_str = str(color.rgb).upper()
+                                    print(f"[DEBUG] 行{row}：color_str={color_str}")
+                                    # 红色的 RGB 值：FF0000 或 FFFF0000
+                                    if 'FF0000' in color_str or color_str == 'FFFF0000':
+                                        is_red = True
+                                elif hasattr(color, 'index') and color.index:
+                                    # 检查是否使用了主题颜色或索引颜色
+                                    print(f"[DEBUG] 行{row}：color.index={color.index}")
+                                    # 红色通常是索引 10 或主题颜色
+                                    if color.index == 10 or color.index == 3:
+                                        is_red = True
+                            
+                            if is_red:
+                                print(f"[DEBUG] 行{row}：跳过红色文字行")
                                 continue
-                            
-                            template_filename = str(template_filename).strip()
-                            total_count += 1
-                            
-                            print(f"[DEBUG] 行{row}: 原始template_filename={template_filename}")
-                            
-                            # 检查规则：如果工作表名称包含"拆2"且D列文字是红色，则跳过
-                            if "拆2" in sheet_name:
-                                d_cell = ws.cell(row, 4)
-                                if d_cell.font and d_cell.font.color:
-                                    color = d_cell.font.color
-                                    if hasattr(color, 'rgb') and color.rgb:
-                                        color_str = str(color.rgb).upper()
-                                        if 'FF0000' in color_str or color_str.endswith('0000FF'):
-                                            print(f"[DEBUG] 行{row}: 跳过红色文字行")
-                                            skipped_rows.append(template_filename)
-                                            continue
-                            
-                            if template_filename.startswith("="):
-                                print(f"[DEBUG] 检测到E列公式: {template_filename}")
-                                template_filename = self.evaluate_vlookup_formula(template_filename, self.current_excel_workbook, ws)
-                                if not template_filename:
-                                    print(f"[DEBUG] 无法解析E列公式")
+                        
+                        # 读取行数据
+                        sku = str(ws.cell(row, 1).value or "").strip()  # A列：商品编号（SKU）
+                        brand_cell = str(ws.cell(row, 2).value or "").strip()  # B列：品牌
+                        code69 = str(ws.cell(row, 3).value or "").strip()  # C列：69码
+                        sn_full = str(ws.cell(row, 4).value or "").strip()  # D列：SN码
+                        template_filename = str(ws.cell(row, 5).value or "").strip()  # E列：编号
+                        
+                        if not sku or not template_filename:
+                            continue
+                        
+                        total_count += 1
+                        
+                        # 判断是否为螺旋桨：69码为空 且 商品编号是纯数字
+                        is_propeller = (not code69 or not code69.startswith("69")) and sku.isdigit()
+                        
+                        try:
+                            if is_propeller:
+                                # 螺旋桨标签
+                                # 编号就是产品名称本身（无序号）
+                                product_name = template_filename
+                                seq_num = "1"
+                                
+                                # 使用 label_propeller 模板
+                                template_path = default_templates["label_propeller"]
+                                if not template_path.exists():
+                                    print(f"[DEBUG] 螺旋桨模板不存在: {template_path}")
+                                    skipped_rows.append(sku)
                                     continue
-                                print(f"[DEBUG] 解析后的template_filename: {template_filename}")
-                            
-                            print(f"[DEBUG] 行{row}: 模板文件名={template_filename}")
-                            
-                            template_dir = os.path.join(os.path.dirname(__file__), "templates", "标签模板", f"{label_type}标签")
-                            template_file = self.find_template_file(template_dir, template_filename)
-                            
-                            if not template_file:
-                                print(f"[DEBUG] 未找到模板: {template_filename}")
                                 
-                                prefix_match = re.match(r'^(\d+)', template_filename)
-                                if prefix_match:
-                                    prefix = prefix_match.group(1)
-                                    matching_templates = self.find_templates_by_prefix(template_dir, prefix)
-                                    if matching_templates:
-                                        missing_templates[template_filename] = matching_templates
-                                        print(f"[DEBUG] 找到替代模板: {matching_templates}")
+                                generator = LabelGenerator(str(template_path))
+                                generator.set_label_data(brand_cell, product_name, sku, "", "", export_date)
                                 
-                                continue
-                            
-                            print(f"[DEBUG] 找到模板: {template_file}")
-                            
-                            output_filename = f"{template_filename}.pld"
-                            output_path = os.path.join(sheet_folder, output_filename)
-                            
-                            # 复制模板
-                            shutil.copy(template_file, output_path)
-                            print(f"[DEBUG] 复制模板到: {output_path}")
-                            
-                            # 修改模板中的日期和SN码中的年份日期
-                            self.modify_template_date(output_path, export_date, export_year, label_type)
-                            
-                            generated_count += 1
-                            print(f"[DEBUG] 生成标签: {output_path}")
+                                # 根据商品编号和映射获取文件名
+                                propeller_mapping = self.sheet_mapping.get("螺旋桨", {})
+                                
+                                # 此时所有新的螺旋桨商品编号已经在预扫描阶段处理过了
+                                if sku not in propeller_mapping:
+                                    print(f"[DEBUG] 行{row}：螺旋桨商品编号 {sku} 未在映射中，跳过")
+                                    skipped_rows.append(sku)
+                                    continue
+                                
+                                filename = propeller_mapping[sku]
+                                
+                                output_filename = f"{filename}.pld"
+                                output_path = os.path.join(sheet_folder, output_filename)
+                                
+                                # 生成文件
+                                if generator.generate_pld(sheet_folder, seq_num=seq_num):
+                                    # 重命名为最终文件名
+                                    default_generated = os.path.join(sheet_folder, f"{seq_num}.{product_name}.pld")
+                                    if os.path.exists(default_generated):
+                                        shutil.move(default_generated, output_path)
+                                    
+                                    generated_count += 1
+                                    print(f"[DEBUG] 生成螺旋桨标签: {output_path}")
+                                else:
+                                    print(f"[DEBUG] 行{row}：生成螺旋桨标签失败")
+                                    skipped_rows.append(sku)
+                            else:
+                                # 3C/玩具标签
+                                # 编号格式：序号.产品名称（如 "180.JD-H36灰色+VR+1"）或 序号产品名称（如 "60JDx-901MaX+1"）
+                                import re
+                                
+                                if "." in template_filename:
+                                    # 有点号的格式：序号.产品名称
+                                    parts = template_filename.split(".", 1)
+                                    seq_num = parts[0]
+                                    product_name = parts[1]
+                                else:
+                                    # 没有点号的格式：尝试用正则提取序号
+                                    # 序号是开头的数字，后面跟着非数字字符
+                                    match = re.match(r'^(\d+)([A-Za-z].*)', template_filename)
+                                    if match:
+                                        seq_num = match.group(1)
+                                        product_name = match.group(2)
+                                    else:
+                                        # 无法识别序号，使用默认值
+                                        seq_num = "1"
+                                        product_name = template_filename
+                                
+                                print(f"[DEBUG] 行{row}：template_filename={template_filename}, seq_num={seq_num}, product_name={product_name}")
+                                
+                                # 从 D列 的 SN 码中提取信息
+                                # SN 格式: SG/NB + 序号(1-3位) + 年份(2或4位) + 日期(4位) + 批次(3位)
+                                if not sn_full:
+                                    print(f"[DEBUG] 行{row}：D列SN码为空")
+                                    skipped_rows.append(sku)
+                                    continue
+                                
+                                sn_parts = self.parse_sn(sn_full)
+                                
+                                if not sn_parts:
+                                    print(f"[DEBUG] 行{row}：无法解析SN码: {sn_full}")
+                                    skipped_rows.append(sku)
+                                    continue
+                                
+                                sn_prefix = sn_parts['prefix']
+                                sn_date = sn_parts['date']
+                                
+                                # 选择合适的模板（根据 SN 前缀）
+                                if sn_prefix == "NB":
+                                    template_key = "label_13"  # 玩具用 label_13
+                                else:
+                                    template_key = "label_12"  # 3C 用 label_12
+                                
+                                template_path = default_templates[template_key]
+                                if not template_path.exists():
+                                    print(f"[DEBUG] 模板不存在: {template_path}")
+                                    skipped_rows.append(sku)
+                                    continue
+                                
+                                generator = LabelGenerator(str(template_path))
+                                generator.set_label_data(brand_cell, product_name, sku, code69, sn_full, sn_date)
+                                
+                                output_filename = f"{template_filename}.pld"
+                                output_path = os.path.join(sheet_folder, output_filename)
+                                
+                                # 生成文件（不使用序号前缀）
+                                if generator.generate_pld(sheet_folder, seq_num=seq_num, use_seq_prefix=False):
+                                    # 获取生成的文件名（product_name.pld）
+                                    generated_filename = f"{product_name}.pld"
+                                    generated_path = os.path.join(sheet_folder, generated_filename)
+                                    
+                                    # 如果生成的文件名与目标文件名不同，则重命名
+                                    if generated_path != output_path and os.path.exists(generated_path):
+                                        shutil.move(generated_path, output_path)
+                                    
+                                    generated_count += 1
+                                    print(f"[DEBUG] 生成标签: {output_path}")
+                                else:
+                                    print(f"[DEBUG] 行{row}：生成标签失败")
+                                    skipped_rows.append(sku)
+                        
+                        except Exception as e:
+                            print(f"[DEBUG] 行{row}生成标签失败: {str(e)}")
+                            skipped_rows.append(sku)
             
             # 显示统计信息
-            self.show_export_summary(total_count, generated_count, missing_templates, skipped_rows)
+            self.show_export_summary(total_count, generated_count, {}, skipped_rows)
+            
+            # 检查是否有新的螺旋桨映射被保存
+            if new_propeller_mappings:
+                msg = "已保存以下新的螺旋桨映射:\n\n"
+                for sku, filename in list(new_propeller_mappings.items())[:10]:
+                    msg += f"  • {sku} -> {filename}\n"
+                if len(new_propeller_mappings) > 10:
+                    msg += f"  ... 还有 {len(new_propeller_mappings) - 10} 个\n"
+                QMessageBox.information(self, "螺旋桨映射", msg)
         
         except Exception as e:
             print(f"[DEBUG] 生成标签失败: {str(e)}")
@@ -1568,43 +1935,26 @@ class KeywordAnalyzerGUI(QMainWindow):
             
             modifier = PLDModifier(template_path)
             
-            # 模板中的年份和日期是统一的占位符，格式为 YYMMDD 或 YYYYMMDD
-            # 例如：260101 表示 26(年份) + 0101(日期)
-            # 同时还有单独的日期占位符在右上角，格式为 MMDD
-            # 例如：0101 表示 01月01日
-            
             if label_type == "3C":
                 # 3C: 年份是2位数字 + 日期4位数字 = 6位总长
-                # 例如：260101 -> 250106（年份改为25，日期改为0106）
                 year_2digit = export_year[-2:]  # 取最后2位
-                old_placeholder = "260101"  # 默认占位符（26 = 2026，0101 = 01月01日）
-                new_placeholder = year_2digit + export_date
-                try:
-                    modifier.replace_field(old_placeholder, new_placeholder, 6, encoding='gbk')
-                except:
-                    pass
+                new_datetime = year_2digit + export_date
+                
+                # 自动检测并替换年份+日期占位符
+                modifier.replace_datetime_placeholder(new_datetime, encoding='gbk')
                 
                 # 替换单独的日期占位符（右上角）
-                try:
-                    modifier.replace_field("0101", export_date, 4, encoding='gbk')
-                except:
-                    pass
+                modifier.replace_date_placeholder(export_date, encoding='gbk')
                     
             elif label_type == "玩具":
                 # 玩具: 年份是4位数字 + 日期4位数字 = 8位总长
-                # 例如：20260101 -> 20250106（年份改为2025，日期改为0106）
-                old_placeholder = "20260101"  # 默认占位符（2026 = 2026年，0101 = 01月01日）
-                new_placeholder = export_year + export_date
-                try:
-                    modifier.replace_field(old_placeholder, new_placeholder, 8, encoding='gbk')
-                except:
-                    pass
+                new_datetime = export_year + export_date
+                
+                # 自动检测并替换年份+日期占位符
+                modifier.replace_datetime_placeholder(new_datetime, encoding='gbk')
                 
                 # 替换单独的日期占位符（右上角）
-                try:
-                    modifier.replace_field("0101", export_date, 4, encoding='gbk')
-                except:
-                    pass
+                modifier.replace_date_placeholder(export_date, encoding='gbk')
             
             # 保存修改
             modifier.save(template_path)
@@ -2453,7 +2803,7 @@ class KeywordAnalyzerGUI(QMainWindow):
                 # 获取螺旋桨模板路径（使用相对路径）
                 import pathlib
                 gui_dir = pathlib.Path(__file__).resolve().parent
-                template_path = gui_dir / "templates" / "default" / "label_propeller.pld"
+                template_path = gui_dir / "templates" / "label_propeller.pld"
                 
                 if not template_path.exists():
                     error_msg = f"生成标签失败\n\n找不到螺旋桨模板文件。请确保模板文件存在于:\n{template_path}"
@@ -2506,7 +2856,7 @@ class KeywordAnalyzerGUI(QMainWindow):
         # 构建 SN
         sn_prefix = self.label_sn_prefix.currentText()
         sn_seq = self.label_sn_seq.text().strip()
-        sn_year = self.label_sn_year.currentText()  # 从下拉栏获取
+        sn_year = self.label_sn_year.text().strip()  # 从填写框获取
         sn_date = self.label_sn_date.text().strip()
         sn_batch = self.label_sn_batch.text().strip()
         
@@ -2571,13 +2921,13 @@ class KeywordAnalyzerGUI(QMainWindow):
             # 获取模板路径（使用相对路径）
             import pathlib
             gui_dir = pathlib.Path(__file__).resolve().parent
-            template_path = gui_dir / "templates" / "default" / "pld_template.pld"
+            template_path = gui_dir / "templates" / "pld_template.pld"
             
             # 如果默认模板不存在，尝试找任何 .pld 文件
             if not template_path.exists():
-                pld_files = list((gui_dir / "templates" / "default").glob("label_*.pld"))
+                pld_files = list((gui_dir / "templates").glob("label_*.pld"))
                 if not pld_files:
-                    error_msg = f"生成标签失败\n\n找不到模板文件。请确保模板文件存在于:\n{gui_dir / 'templates' / 'default'}"
+                    error_msg = f"生成标签失败\n\n找不到模板文件。请确保模板文件存在于:\n{gui_dir / 'templates'}"
                     QMessageBox.critical(self, "失败", error_msg)
                     return
                 template_path = pld_files[0]
@@ -2866,6 +3216,94 @@ def main():
     sys.exit(app.exec_())
 
 
+class PropellerFileNameDialog(QDialog):
+    """螺旋桨文件命名对话框"""
+    
+    def __init__(self, parent=None, existing_files=None):
+        super().__init__(parent)
+        self.existing_files = existing_files or []
+        self.filename = None
+        self.setWindowTitle("螺旋桨文件命名")
+        self.setGeometry(0, 0, 300, 80)
+        self.setFixedSize(300, 80)
+        self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
+        self.center_on_screen()
+        self.init_ui()
+    
+    def center_on_screen(self):
+        """将窗口居中显示"""
+        if self.parent():
+            parent_geometry = self.parent().geometry()
+            x = parent_geometry.x() + (parent_geometry.width() - self.width()) // 2
+            y = parent_geometry.y() + (parent_geometry.height() - self.height()) // 2
+            self.move(x, y)
+        else:
+            screen = self.screen()
+            screen_geometry = screen.geometry()
+            x = (screen_geometry.width() - self.width()) // 2
+            y = (screen_geometry.height() - self.height()) // 2
+            self.move(x, y)
+    
+    def init_ui(self):
+        """初始化 UI"""
+        layout = QVBoxLayout()
+        layout.setContentsMargins(10, 8, 10, 8)
+        layout.setSpacing(8)
+        
+        # 标签和输入框在同一行
+        input_layout = QHBoxLayout()
+        input_layout.setContentsMargins(0, 0, 0, 0)
+        input_layout.setSpacing(5)
+        
+        label = QLabel("请命名文件:")
+        input_layout.addWidget(label)
+        
+        self.filename_input = QLineEdit()
+        self.filename_input.setPlaceholderText("例如: 螺旋桨1")
+        input_layout.addWidget(self.filename_input)
+        
+        layout.addLayout(input_layout)
+        
+        # 按钮行
+        button_layout = QHBoxLayout()
+        button_layout.setContentsMargins(0, 0, 0, 0)
+        button_layout.setSpacing(10)
+        
+        ok_btn = QPushButton("确定")
+        ok_btn.clicked.connect(self.accept_filename)
+        button_layout.addWidget(ok_btn)
+        
+        cancel_btn = QPushButton("取消")
+        cancel_btn.clicked.connect(self.reject)
+        button_layout.addWidget(cancel_btn)
+        
+        layout.addLayout(button_layout)
+        
+        self.setLayout(layout)
+        self.filename_input.setFocus()
+    
+    def accept_filename(self):
+        """验证并接受文件名"""
+        filename = self.filename_input.text().strip()
+        
+        if not filename:
+            QMessageBox.warning(self, "警告", "文件名不能为空")
+            return
+        
+        # 检查文件名是否已存在
+        pld_filename = f"{filename}.pld"
+        if pld_filename in self.existing_files:
+            QMessageBox.warning(self, "警告", f"文件 {pld_filename} 已存在，请使用其他名称")
+            return
+        
+        self.filename = filename
+        self.accept()
+    
+    def get_filename(self):
+        """获取输入的文件名"""
+        return self.filename
+
+
 class LabelDialog(QDialog):
     """标签生成对话框"""
     
@@ -2874,8 +3312,8 @@ class LabelDialog(QDialog):
         self.parent_gui = parent
         self.excel_data = None  # 存储导入的Excel数据
         self.setWindowTitle("新增标签")
-        self.setGeometry(0, 0, 600, 210)
-        self.setFixedSize(600, 210)
+        self.setGeometry(0, 0, 450, 210)
+        self.setFixedSize(450, 210)
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
         self.center_on_screen()
         self.init_ui()
@@ -2899,35 +3337,6 @@ class LabelDialog(QDialog):
         layout = QVBoxLayout()
         layout.setContentsMargins(10, 10, 10, 10)
         layout.setSpacing(8)
-        
-        # 顶部按钮行
-        top_button_layout = QHBoxLayout()
-        top_button_layout.setContentsMargins(0, 0, 0, 0)
-        top_button_layout.setSpacing(10)
-        
-        import_btn = QPushButton("导入批处理模板")
-        import_btn.clicked.connect(self.import_excel)
-        top_button_layout.addWidget(import_btn)
-        
-        download_template_btn = QPushButton("下载批处理模板")
-        download_template_btn.clicked.connect(self.download_template)
-        top_button_layout.addWidget(download_template_btn)
-        
-        top_button_layout.addStretch()
-        
-        export_btn = QPushButton("导出")
-        export_btn.clicked.connect(self.export_labels)
-        top_button_layout.addWidget(export_btn)
-        
-        import_existing_template_btn = QPushButton("导入已有模板")
-        import_existing_template_btn.clicked.connect(self.import_existing_templates)
-        top_button_layout.addWidget(import_existing_template_btn)
-        
-        self.batch_generate_btn = QPushButton("添加至模板")
-        self.batch_generate_btn.clicked.connect(self.generate_label_batch)
-        top_button_layout.addWidget(self.batch_generate_btn)
-        
-        layout.addLayout(top_button_layout)
         
         # 输入表单
         form_layout = QGridLayout()
@@ -2988,15 +3397,13 @@ class LabelDialog(QDialog):
         sn_layout.addSpacing(10)
         
         sn_layout.addWidget(QLabel("年份:"))
-        self.label_sn_year = QComboBox()
-        # 生成年份列表：2026到当前年份（倒序，最新的在前）
+        self.label_sn_year = QLineEdit()
+        self.label_sn_year.setPlaceholderText("YYYY")
+        self.label_sn_year.setMaximumWidth(60)
+        self.label_sn_year.setMaxLength(4)
         from datetime import datetime
         current_year = datetime.now().year
-        years = [str(year) for year in range(current_year, 2025, -1)]
-        self.label_sn_year.addItems(years)
-        # 默认选择当前年份
-        self.label_sn_year.setCurrentText(str(current_year))
-        self.label_sn_year.setMaximumWidth(60)  # 设置固定宽度
+        self.label_sn_year.setText(str(current_year))
         sn_layout.addWidget(self.label_sn_year)
         sn_layout.addSpacing(10)
         
@@ -3007,17 +3414,30 @@ class LabelDialog(QDialog):
         self.label_sn_date.setMaxLength(4)
         self.label_sn_date.setText(datetime.now().strftime("%m%d"))
         sn_layout.addWidget(self.label_sn_date)
-        sn_layout.addSpacing(10)
         
-        sn_layout.addWidget(QLabel("批次:"))
+        form_layout.addLayout(sn_layout, 5, 1)
+        
+        # 批次行（与其他行左对齐）
+        form_layout.addWidget(QLabel("批次:"), 6, 0)
+        
+        batch_layout = QHBoxLayout()
+        batch_layout.setContentsMargins(0, 0, 0, 0)
+        batch_layout.setSpacing(0)
+        
         self.label_sn_batch = QLineEdit()
         self.label_sn_batch.setPlaceholderText("001-999")
         self.label_sn_batch.setMaximumWidth(50)
         self.label_sn_batch.setMaxLength(3)
         self.label_sn_batch.setText("001")
-        sn_layout.addWidget(self.label_sn_batch)
+        batch_layout.addWidget(self.label_sn_batch)
         
-        form_layout.addLayout(sn_layout, 5, 1)
+        batch_layout.addStretch()
+        
+        export_btn = QPushButton("导出")
+        export_btn.clicked.connect(self.export_labels)
+        batch_layout.addWidget(export_btn)
+        
+        form_layout.addLayout(batch_layout, 6, 1)
         
         layout.addLayout(form_layout)
         
@@ -3057,127 +3477,6 @@ class LabelDialog(QDialog):
         self.label_sn_date.setEnabled(True)
         self.label_sn_batch.setEnabled(True)
     
-    def import_excel(self):
-        """导入Excel文件"""
-        try:
-            import openpyxl
-        except ImportError:
-            QMessageBox.warning(self, "警告", "需要安装openpyxl库。请运行: pip install openpyxl")
-            return
-        
-        file_path, _ = QFileDialog.getOpenFileName(
-            self, "选择Excel文件", "", "Excel文件 (*.xlsx *.xls);;所有文件 (*)"
-        )
-        
-        if not file_path:
-            return
-        
-        try:
-            workbook = openpyxl.load_workbook(file_path, data_only=True)
-            self.excel_data = workbook
-            self.disable_form_controls()
-            QMessageBox.information(self, "成功", "Excel文件导入成功")
-        except Exception as e:
-            QMessageBox.critical(self, "错误", f"导入Excel文件失败: {str(e)}")
-    
-    def download_template(self):
-        """下载模板"""
-        try:
-            import openpyxl
-            from openpyxl.styles import Font, PatternFill, Alignment
-        except ImportError:
-            QMessageBox.warning(self, "警告", "需要安装openpyxl库。请运行: pip install openpyxl")
-            return
-        
-        # 选择保存路径
-        file_path, _ = QFileDialog.getSaveFileName(
-            self, "保存模板", "标签模板.xlsx", "Excel文件 (*.xlsx)"
-        )
-        
-        if not file_path:
-            return
-        
-        try:
-            # 创建工作簿
-            workbook = openpyxl.Workbook()
-            worksheet = workbook.active
-            worksheet.title = "标签数据"
-            
-            # 设置表头
-            headers = ["品牌", "产品名称", "SKU", "69码", "SN前缀", "SN序号", "SN年份", "SN日期", "SN批次", "文件名"]
-            worksheet.append(headers)
-            
-            # 设置表头样式
-            header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
-            header_font = Font(bold=True, color="FFFFFF")
-            
-            for cell in worksheet[1]:
-                cell.fill = header_fill
-                cell.font = header_font
-                cell.alignment = Alignment(horizontal="center", vertical="center")
-            
-            # 设置列宽
-            worksheet.column_dimensions['A'].width = 12
-            worksheet.column_dimensions['B'].width = 18
-            worksheet.column_dimensions['C'].width = 12
-            worksheet.column_dimensions['D'].width = 12
-            worksheet.column_dimensions['E'].width = 10
-            worksheet.column_dimensions['F'].width = 10
-            worksheet.column_dimensions['G'].width = 10
-            worksheet.column_dimensions['H'].width = 10
-            worksheet.column_dimensions['I'].width = 10
-            worksheet.column_dimensions['J'].width = 15
-            
-            # 保存文件
-            workbook.save(file_path)
-            QMessageBox.information(self, "成功", f"模板已下载到: {file_path}")
-        except Exception as e:
-            QMessageBox.critical(self, "错误", f"下载模板失败: {str(e)}")
-    
-    def import_existing_templates(self):
-        """导入已有的PLD模板文件"""
-        try:
-            import shutil
-            
-            # 打开文件选择对话框，选择一个或多个PLD文件
-            file_paths, _ = QFileDialog.getOpenFileNames(
-                self, "选择PLD模板文件", "", "PLD文件 (*.pld);;所有文件 (*)"
-            )
-            
-            if not file_paths:
-                return
-            
-            # 获取当前选择的标签类型
-            label_type = self.label_type_input.currentText()
-            if not label_type:
-                QMessageBox.warning(self, "警告", "请先选择标签类型")
-                return
-            
-            # 确定目标文件夹
-            template_dir = os.path.join(os.path.dirname(__file__), "templates", "标签模板", f"{label_type}标签")
-            
-            if not os.path.exists(template_dir):
-                os.makedirs(template_dir)
-            
-            # 复制选中的文件到模板文件夹
-            imported_count = 0
-            for file_path in file_paths:
-                try:
-                    file_name = os.path.basename(file_path)
-                    dest_path = os.path.join(template_dir, file_name)
-                    shutil.copy(file_path, dest_path)
-                    imported_count += 1
-                except Exception as e:
-                    print(f"[DEBUG] 导入文件失败: {file_path}, 错误: {str(e)}")
-            
-            if imported_count > 0:
-                QMessageBox.information(self, "成功", f"已导入 {imported_count} 个模板文件到: {template_dir}")
-            else:
-                QMessageBox.warning(self, "警告", "没有成功导入任何文件")
-        
-        except Exception as e:
-            QMessageBox.critical(self, "错误", f"导入模板失败: {str(e)}")
-    
     def export_labels(self):
         """导出标签到桌面"""
         try:
@@ -3197,7 +3496,9 @@ class LabelDialog(QDialog):
             
             # 目标文件夹（桌面）
             desktop_path = pathlib.Path(os.path.expanduser("~/Desktop"))
-            export_folder = desktop_path / f"{label_type}标签"
+            # 螺旋桨标签放在 3C标签 文件夹下
+            export_type = "3C标签" if label_type == "螺旋桨" else f"{label_type}标签"
+            export_folder = desktop_path / export_type
             export_folder.mkdir(parents=True, exist_ok=True)
             
             # 检查目标文件是否已存在
@@ -3262,7 +3563,7 @@ class LabelDialog(QDialog):
                         try:
                             # 获取螺旋桨模板路径
                             gui_dir = pathlib.Path(__file__).resolve().parent
-                            template_path = gui_dir / "templates" / "default" / "label_propeller.pld"
+                            template_path = gui_dir / "templates" / "label_propeller.pld"
                             
                             if not template_path.exists():
                                 raise Exception(f"找不到螺旋桨模板文件: {template_path}")
@@ -3274,26 +3575,45 @@ class LabelDialog(QDialog):
                             label_dir = gui_dir / "templates" / "标签模板" / "3C标签"
                             label_dir.mkdir(parents=True, exist_ok=True)
                             
+                            # 获取现有文件列表
+                            existing_files = [f.name for f in label_dir.glob("*.pld")]
+                            
+                            # 弹窗让用户命名文件
+                            dialog = PropellerFileNameDialog(self, existing_files)
+                            if dialog.exec_() != QDialog.Accepted:
+                                # 用户取消了
+                                return None
+                            
+                            filename = dialog.get_filename()
+                            if not filename:
+                                return None
+                            
                             # 生成文件（使用序号1作为默认）
                             if generator.generate_pld(str(label_dir), seq_num="1"):
-                                # 确定文件名
-                                if custom_filename:
-                                    # 使用自定义文件名
-                                    output_filename = f"{custom_filename}.pld"
-                                else:
-                                    # 使用默认命名法
-                                    output_filename = f"1.{product}.pld"
+                                # 生成的默认文件名
+                                default_generated = label_dir / f"1.{product}.pld"
                                 
-                                default_path = label_dir / output_filename
+                                # 最终输出文件名
+                                output_filename = f"{filename}.pld"
+                                output_path = label_dir / output_filename
                                 
-                                # 如果使用自定义文件名，需要重命名生成的文件
-                                if custom_filename:
-                                    default_generated = label_dir / f"1.{product}.pld"
-                                    if default_generated.exists():
-                                        default_generated.rename(default_path)
+                                # 重命名生成的文件
+                                if default_generated.exists():
+                                    default_generated.rename(output_path)
                                 
-                                if default_path.exists():
-                                    generated_files.append(default_path)
+                                if output_path.exists():
+                                    generated_files.append(output_path)
+                                    
+                                    # 添加映射到工作表映射设置
+                                    if "螺旋桨" not in self.parent_gui.sheet_mapping:
+                                        self.parent_gui.sheet_mapping["螺旋桨"] = {}
+                                    
+                                    # 使用 SKU 作为映射的 key，文件名作为 value
+                                    self.parent_gui.sheet_mapping["螺旋桨"][sku] = filename
+                                    self.parent_gui.save_sheet_mapping()
+                                    
+                                    # 弹窗提醒
+                                    QMessageBox.information(self, "成功", f"已添加到螺旋桨映射:\nSKU: {sku}\n文件: {filename}")
                                 else:
                                     raise Exception("生成的文件不存在")
                             else:
@@ -3330,7 +3650,7 @@ class LabelDialog(QDialog):
                             
                             # 获取模板路径
                             gui_dir = pathlib.Path(__file__).resolve().parent
-                            template_path = gui_dir / "templates" / "default" / "label_12.pld"
+                            template_path = gui_dir / "templates" / "label_12.pld"
                             
                             if not template_path.exists():
                                 raise Exception(f"找不到模板文件: {template_path}")
@@ -3413,7 +3733,7 @@ class LabelDialog(QDialog):
                 try:
                     # 获取螺旋桨模板路径
                     gui_dir = pathlib.Path(__file__).resolve().parent
-                    template_path = gui_dir / "templates" / "default" / "label_propeller.pld"
+                    template_path = gui_dir / "templates" / "label_propeller.pld"
                     
                     if not template_path.exists():
                         raise Exception(f"找不到螺旋桨模板文件: {template_path}")
@@ -3425,14 +3745,45 @@ class LabelDialog(QDialog):
                     label_dir = gui_dir / "templates" / "标签模板" / "3C标签"
                     label_dir.mkdir(parents=True, exist_ok=True)
                     
+                    # 获取现有文件列表
+                    existing_files = [f.name for f in label_dir.glob("*.pld")]
+                    
+                    # 弹窗让用户命名文件
+                    dialog = PropellerFileNameDialog(self, existing_files)
+                    if dialog.exec_() != QDialog.Accepted:
+                        # 用户取消了
+                        return None
+                    
+                    filename = dialog.get_filename()
+                    if not filename:
+                        return None
+                    
                     # 生成文件（使用序号1作为默认）
                     if generator.generate_pld(str(label_dir), seq_num="1"):
-                        # 获取生成的默认文件名
-                        default_filename = f"1.{product}.pld"
-                        default_path = label_dir / default_filename
+                        # 生成的默认文件名
+                        default_generated = label_dir / f"1.{product}.pld"
                         
-                        if default_path.exists():
-                            return default_path
+                        # 最终输出文件名
+                        output_filename = f"{filename}.pld"
+                        output_path = label_dir / output_filename
+                        
+                        # 重命名生成的文件
+                        if default_generated.exists():
+                            default_generated.rename(output_path)
+                        
+                        if output_path.exists():
+                            # 添加映射到工作表映射设置
+                            if "螺旋桨" not in self.parent_gui.sheet_mapping:
+                                self.parent_gui.sheet_mapping["螺旋桨"] = {}
+                            
+                            # 使用 SKU 作为映射的 key，文件名作为 value
+                            self.parent_gui.sheet_mapping["螺旋桨"][sku] = filename
+                            self.parent_gui.save_sheet_mapping()
+                            
+                            # 弹窗提醒
+                            QMessageBox.information(self, "成功", f"已添加到螺旋桨映射:\nSKU: {sku}\n文件: {filename}")
+                            
+                            return output_path
                         else:
                             raise Exception("生成的文件不存在")
                     else:
@@ -3445,7 +3796,7 @@ class LabelDialog(QDialog):
                 code69 = self.label_code69_input.text().strip()
                 sn_prefix = self.label_sn_prefix.currentText()
                 sn_seq = self.label_sn_seq.text().strip()
-                sn_year = self.label_sn_year.currentText()
+                sn_year = self.label_sn_year.text().strip()
                 sn_date = self.label_sn_date.text().strip()
                 sn_batch = self.label_sn_batch.text().strip()
                 
@@ -3476,7 +3827,7 @@ class LabelDialog(QDialog):
                     
                     # 获取模板路径
                     gui_dir = pathlib.Path(__file__).resolve().parent
-                    template_path = gui_dir / "templates" / "default" / "label_12.pld"
+                    template_path = gui_dir / "templates" / "label_12.pld"
                     
                     if not template_path.exists():
                         raise Exception(f"找不到模板文件: {template_path}")
@@ -3518,7 +3869,7 @@ class LabelDialog(QDialog):
                 
                 # 获取模板路径
                 gui_dir = pathlib.Path(__file__).resolve().parent
-                template_path = gui_dir / "templates" / "default" / "label_12.pld"
+                template_path = gui_dir / "templates" / "label_12.pld"
                 
                 if not template_path.exists():
                     raise Exception(f"找不到模板文件: {template_path}")
@@ -3552,16 +3903,6 @@ class LabelDialog(QDialog):
                 QMessageBox.critical(self, "错误", f"生成标签失败: {str(e)}")
                 return None
     
-    def generate_label_batch(self):
-        """生成标签（添加模板按钮）"""
-        generated_files = self.generate_label_and_get_path()
-        if generated_files:
-            if isinstance(generated_files, list):
-                # 批量生成的情况
-                QMessageBox.information(self, "成功", f"已生成 {len(generated_files)} 个标签")
-            else:
-                # 单个生成的情况
-                QMessageBox.information(self, "成功", f"标签已生成: {generated_files.name}")
     
     @staticmethod
     def validate_date(date_str: str) -> tuple:
@@ -3610,7 +3951,7 @@ class LabelDialog(QDialog):
         try:
             # 获取螺旋桨模板路径
             gui_dir = pathlib.Path(__file__).resolve().parent
-            template_path = gui_dir / "templates" / "default" / "label_propeller.pld"
+            template_path = gui_dir / "templates" / "label_propeller.pld"
             
             if not template_path.exists():
                 raise Exception(f"找不到螺旋桨模板文件: {template_path}")
@@ -3667,11 +4008,11 @@ class LabelDialog(QDialog):
         try:
             # 获取模板路径
             gui_dir = pathlib.Path(__file__).resolve().parent
-            template_path = gui_dir / "templates" / "default" / "pld_template.pld"
+            template_path = gui_dir / "templates" / "pld_template.pld"
             
             # 如果默认模板不存在，尝试找任何 label_*.pld 文件
             if not template_path.exists():
-                pld_files = list((gui_dir / "templates" / "default").glob("label_*.pld"))
+                pld_files = list((gui_dir / "templates").glob("label_*.pld"))
                 if not pld_files:
                     raise Exception(f"找不到模板文件")
                 template_path = pld_files[0]
@@ -3717,69 +4058,17 @@ class LabelDialog(QDialog):
         except Exception as e:
             raise Exception(f"生成普通标签失败: {str(e)}")
     
-    @staticmethod
-    def parse_sn(sn):
-        """
-        从SN序列号中解析出各个部分
-        
-        SG格式: SG + 序号(1-3位) + 年份(2位) + 日期(4位) + 批次(3位)
-        NB格式: NB + 序号(1-3位) + 年份(4位) + 日期(4位) + 批次(3位)
-        
-        Args:
-            sn: 完整的SN序列号，如 "SG001202601001" 或 "NB001202501001"
-            
-        Returns:
-            dict: 包含 prefix, seq, year, date, batch 的字典
-        """
-        if not sn or len(sn) < 2:
-            return None
-        
-        prefix = sn[:2]
-        rest = sn[2:]
-        
-        try:
-            if prefix in ["SG", "SN"]:
-                # SG/SN: 序号(1-3位) + 年份(2位) + 日期(4位) + 批次(3位)
-                # 从后往前: 批次(3) + 日期(4) + 年份(2) + 序号(剩余)
-                batch = rest[-3:]
-                date = rest[-7:-3]
-                year = rest[-9:-7]
-                seq = rest[:-9]
-                
-                return {
-                    'prefix': prefix,
-                    'seq': seq,
-                    'year': year,
-                    'date': date,
-                    'batch': batch
-                }
-            elif prefix == "NB":
-                # NB: 序号(1-3位) + 年份(4位) + 日期(4位) + 批次(3位)
-                # 从后往前: 批次(3) + 日期(4) + 年份(4) + 序号(剩余)
-                batch = rest[-3:]
-                date = rest[-7:-3]
-                year = rest[-11:-7]
-                seq = rest[:-11]
-                
-                return {
-                    'prefix': prefix,
-                    'seq': seq,
-                    'year': year,
-                    'date': date,
-                    'batch': batch
-                }
-        except:
-            return None
-        
-        return None
-    
     def on_type_changed(self, type_name):
         """类型改变时的处理"""
         # 更新品牌列表
         self.label_brand_input.blockSignals(True)
         self.label_brand_input.clear()
         
-        if type_name in self.parent_gui.sheet_mapping:
+        if type_name == "螺旋桨":
+            # 螺旋桨使用 3C 的品牌列表
+            brands = list(self.parent_gui.sheet_mapping["3C"].keys())
+            self.label_brand_input.addItems(brands)
+        elif type_name in self.parent_gui.sheet_mapping:
             brands = list(self.parent_gui.sheet_mapping[type_name].keys())
             self.label_brand_input.addItems(brands)
         
@@ -4118,12 +4407,16 @@ class SheetMappingDialog(QDialog):
         if parent and hasattr(parent, 'sheet_rules'):
             self.rules = copy.deepcopy(parent.sheet_rules)
         
+        # 全局锁定状态，每次打开都是锁定状态
+        self.is_locked = True
+        
         self.setWindowTitle("工作表映射设置")
         self.setGeometry(0, 0, 400, 300)
         self.setFixedSize(400, 260)
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
         self.center_on_screen()
         self.init_ui()
+        self.update_lock_state()
     
     def center_on_screen(self):
         """将窗口居中显示在父窗口上"""
@@ -4145,7 +4438,7 @@ class SheetMappingDialog(QDialog):
         layout.setContentsMargins(10, 10, 10, 10)
         layout.setSpacing(10)
         
-        # 类型选择
+        # 类型选择和锁定按钮
         type_layout = QHBoxLayout()
         type_layout.addWidget(QLabel("类型:"))
         self.type_combo = QComboBox()
@@ -4153,6 +4446,13 @@ class SheetMappingDialog(QDialog):
         self.type_combo.currentTextChanged.connect(self.on_type_changed)
         type_layout.addWidget(self.type_combo)
         type_layout.addStretch()
+        
+        # 锁定/解锁按钮
+        self.lock_btn = QPushButton("解锁")
+        self.lock_btn.setMaximumWidth(60)
+        self.lock_btn.clicked.connect(self.toggle_lock)
+        type_layout.addWidget(self.lock_btn)
+        
         layout.addLayout(type_layout)
         
         # 品牌和工作表映射表
@@ -4171,18 +4471,19 @@ class SheetMappingDialog(QDialog):
         # 允许选择单元格
         self.mapping_table.setSelectionBehavior(QTableWidget.SelectItems)
         self.mapping_table.itemClicked.connect(self.on_table_item_clicked)
+        self.mapping_table.itemDoubleClicked.connect(self.on_table_item_double_clicked)
         layout.addWidget(self.mapping_table)
         
         # 按钮行
         button_layout = QHBoxLayout()
         
-        add_btn = QPushButton("新增")
-        add_btn.clicked.connect(self.add_mapping)
-        button_layout.addWidget(add_btn)
+        self.add_btn = QPushButton("新增")
+        self.add_btn.clicked.connect(self.add_mapping)
+        button_layout.addWidget(self.add_btn)
         
-        delete_btn = QPushButton("删除")
-        delete_btn.clicked.connect(self.delete_mapping)
-        button_layout.addWidget(delete_btn)
+        self.delete_btn = QPushButton("删除")
+        self.delete_btn.clicked.connect(self.delete_mapping)
+        button_layout.addWidget(self.delete_btn)
         
         button_layout.addStretch()
         
@@ -4190,9 +4491,9 @@ class SheetMappingDialog(QDialog):
         self.reset_btn.clicked.connect(self.reset_defaults)
         button_layout.addWidget(self.reset_btn)
         
-        ok_btn = QPushButton("确定")
-        ok_btn.clicked.connect(self.save_and_close)
-        button_layout.addWidget(ok_btn)
+        self.ok_btn = QPushButton("确定")
+        self.ok_btn.clicked.connect(self.save_and_close)
+        button_layout.addWidget(self.ok_btn)
         
         layout.addLayout(button_layout)
         
@@ -4232,6 +4533,7 @@ class SheetMappingDialog(QDialog):
                     # 模板文件名列
                     value_item = QTableWidgetItem(value)
                     value_item.setFlags(value_item.flags() & ~Qt.ItemIsEditable)
+                    
                     self.mapping_table.setItem(row, 1, value_item)
                     
                     # 规则列下拉框（螺旋桨暂无规则，设置为禁用）
@@ -4309,13 +4611,13 @@ class SheetMappingDialog(QDialog):
         
         if type_name == "螺旋桨":
             # 螺旋桨映射：商品编号 -> 模板文件名
-            sku, ok = QInputDialog.getText(self, "新增商品编号", "请输入商品编号:")
+            sku, ok = self.show_input_dialog("新增商品编号", "请输入商品编号:")
             if not ok or not sku.strip():
                 return
             
             sku = sku.strip()
             
-            template_file, ok = QInputDialog.getText(self, "新增模板文件名", "请输入模板文件名:")
+            template_file, ok = self.show_input_dialog("新增模板文件名", "请输入模板文件名:")
             if not ok or not template_file.strip():
                 return
             
@@ -4327,13 +4629,13 @@ class SheetMappingDialog(QDialog):
             self.mapping[type_name][sku] = template_file
         else:
             # 3C 和玩具映射：品牌 -> 工作表列表
-            brand, ok = QInputDialog.getText(self, "新增品牌", "请输入品牌名称:")
+            brand, ok = self.show_input_dialog("新增品牌", "请输入品牌名称:")
             if not ok or not brand.strip():
                 return
             
             brand = brand.strip()
             
-            sheets_text, ok = QInputDialog.getText(self, "新增工作表", "请输入工作表名称(多个用逗号分隔):")
+            sheets_text, ok = self.show_input_dialog("新增工作表", "请输入工作表名称(多个用逗号分隔):")
             if not ok or not sheets_text.strip():
                 return
             
@@ -4346,8 +4648,43 @@ class SheetMappingDialog(QDialog):
         
         self.on_type_changed(type_name)
     
+    def show_input_dialog(self, title, label_text, default_text=""):
+        """显示自定义输入对话框，只有保存按钮"""
+        dialog = QDialog(self)
+        dialog.setWindowTitle(title)
+        dialog.setWindowFlags(dialog.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint)
+        dialog.setModal(True)
+        dialog.setMinimumWidth(350)
+        
+        layout = QVBoxLayout()
+        
+        # 标签
+        label = QLabel(label_text)
+        layout.addWidget(label)
+        
+        # 输入框和保存按钮在同一行
+        input_layout = QHBoxLayout()
+        text_input = QLineEdit()
+        text_input.setText(default_text)
+        input_layout.addWidget(text_input)
+        
+        save_button = QPushButton("保存")
+        save_button.setMaximumWidth(60)
+        save_button.clicked.connect(dialog.accept)
+        input_layout.addWidget(save_button)
+        
+        layout.addLayout(input_layout)
+        dialog.setLayout(layout)
+        
+        ok = dialog.exec() == QDialog.DialogCode.Accepted
+        return text_input.text(), ok
+    
     def delete_mapping(self):
         """删除映射"""
+        # 如果被锁定，不允许删除
+        if self.is_locked:
+            return
+        
         type_name = self.type_combo.currentText()
         current_row = self.mapping_table.currentRow()
         
@@ -4386,6 +4723,10 @@ class SheetMappingDialog(QDialog):
                 if not sheets:
                     del self.mapping[type_name][col0_text]
         
+        # 保存映射
+        self.parent_gui.sheet_mapping = self.mapping
+        self.parent_gui.save_sheet_mapping()
+        
         self.on_type_changed(type_name)
     
     def reset_defaults(self):
@@ -4399,6 +4740,118 @@ class SheetMappingDialog(QDialog):
         """表格项点击时的处理"""
         # 这个方法现在不需要做任何事，因为下拉框已经在表格中
         pass
+    
+    def on_table_item_double_clicked(self, item):
+        """表格项双击时的处理 - 编辑映射"""
+        # 如果被锁定，不允许编辑
+        if self.is_locked:
+            return
+        
+        row = item.row()
+        col = item.column()
+        type_name = self.type_combo.currentText()
+        
+        # 获取当前行的品牌/商品编号和工作表/模板文件名
+        col0_item = self.mapping_table.item(row, 0)
+        col1_item = self.mapping_table.item(row, 1)
+        
+        if not col0_item or not col1_item:
+            return
+        
+        old_key = col0_item.text()
+        old_value = col1_item.text()
+        
+        if type_name == "螺旋桨":
+            # 螺旋桨映射：编辑商品编号或模板文件名
+            if col == 0:
+                # 编辑商品编号
+                new_key, ok = self.show_input_dialog("编辑商品编号", "请输入新的商品编号:", old_key)
+                if ok and new_key.strip() and new_key != old_key:
+                    new_key = new_key.strip()
+                    if new_key in self.mapping[type_name]:
+                        QMessageBox.warning(self, "警告", "该商品编号已存在")
+                        return
+                    # 更新映射
+                    self.mapping[type_name][new_key] = self.mapping[type_name].pop(old_key)
+                    self.on_type_changed(type_name)
+            elif col == 1:
+                # 编辑模板文件名
+                new_value, ok = self.show_input_dialog("编辑模板文件名", "请输入新的模板文件名:", old_value)
+                if ok and new_value.strip() and new_value != old_value:
+                    new_value = new_value.strip()
+                    self.mapping[type_name][old_key] = new_value
+                    self.on_type_changed(type_name)
+        else:
+            # 3C 和玩具映射：编辑品牌或工作表
+            if col == 0:
+                # 编辑品牌
+                new_key, ok = self.show_input_dialog("编辑品牌", "请输入新的品牌名称:", old_key)
+                if ok and new_key.strip() and new_key != old_key:
+                    new_key = new_key.strip()
+                    if new_key in self.mapping[type_name]:
+                        QMessageBox.warning(self, "警告", "该品牌已存在")
+                        return
+                    # 更新映射
+                    self.mapping[type_name][new_key] = self.mapping[type_name].pop(old_key)
+                    self.on_type_changed(type_name)
+            elif col == 1:
+                # 编辑工作表
+                new_value, ok = self.show_input_dialog("编辑工作表", "请输入新的工作表名称:", old_value)
+                if ok and new_value.strip() and new_value != old_value:
+                    new_value = new_value.strip()
+                    # 从旧工作表列表中删除，添加新工作表
+                    sheets = self.mapping[type_name][old_key]
+                    if isinstance(sheets, list):
+                        if old_value in sheets:
+                            sheets.remove(old_value)
+                        if new_value not in sheets:
+                            sheets.append(new_value)
+                    self.on_type_changed(type_name)
+    
+    def toggle_lock(self):
+        """切换全局锁定状态"""
+        self.is_locked = not self.is_locked
+        self.update_lock_state()
+    
+    def update_lock_state(self):
+        """更新锁定状态下的UI"""
+        # 更新按钮文本和状态
+        if self.is_locked:
+            self.lock_btn.setText("解锁")
+        else:
+            self.lock_btn.setText("锁定")
+        
+        # 禁用/启用所有控件
+        self.type_combo.setEnabled(not self.is_locked)
+        self.mapping_table.setEnabled(not self.is_locked)
+        self.add_btn.setEnabled(not self.is_locked)
+        self.delete_btn.setEnabled(not self.is_locked)
+        self.reset_btn.setEnabled(not self.is_locked)
+        self.ok_btn.setEnabled(not self.is_locked)
+        
+        # 设置表格单元格的背景色
+        if self.is_locked:
+            # 锁定时，所有单元格变灰色
+            for row in range(self.mapping_table.rowCount()):
+                for col in range(self.mapping_table.columnCount()):
+                    item = self.mapping_table.item(row, col)
+                    if item:
+                        item.setBackground(QColor(200, 200, 200))
+                    # 下拉框也要变灰色
+                    widget = self.mapping_table.cellWidget(row, col)
+                    if widget:
+                        widget.setEnabled(False)
+        else:
+            # 解锁时，恢复正常颜色
+            for row in range(self.mapping_table.rowCount()):
+                for col in range(self.mapping_table.columnCount()):
+                    item = self.mapping_table.item(row, col)
+                    if item:
+                        item.setBackground(QColor(255, 255, 255))
+                    # 下拉框恢复可用
+                    widget = self.mapping_table.cellWidget(row, col)
+                    if widget:
+                        widget.setEnabled(True)
     
     def save_and_close(self):
         """保存并关闭"""
