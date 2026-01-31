@@ -44,5 +44,7 @@ app = BUNDLE(
     info_plist={
         'NSPrincipalClass': 'NSApplication',
         'NSHighResolutionCapable': 'True',
+        'CFBundleDevelopmentRegion': 'en',
+        'CFBundleLocalizations': ['en', 'zh_CN', 'zh_TW'],
     },
 )
