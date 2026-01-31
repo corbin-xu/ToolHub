@@ -44,7 +44,7 @@ jobs:
           ln -s /Applications dmg_temp/Applications
           
           # 创建 DMG
-          hdiutil create -volname "JD Supplier Label Generator" -srcfolder dmg_temp -ov -format UDZO jd-supplier-label-generator-1.2.dmg
+          hdiutil create -volname "JD Supplier Label Generator" -srcfolder dmg_temp -ov -format UDZO jd-supplier-label-generator-1.1.dmg
           
           # 清理临时目录
           rm -rf dmg_temp
@@ -52,6 +52,6 @@ jobs:
       - name: Upload to Release
         uses: softprops/action-gh-release@v1
         with:
-          files: dist/jd-supplier-label-generator-1.2.dmg
+          files: dist/jd-supplier-label-generator-1.1.dmg
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

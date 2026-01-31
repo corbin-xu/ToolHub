@@ -207,7 +207,7 @@ class KeywordAnalyzerGUI(QMainWindow):
         self.last_file_path = self.config_manager.get('last_csv_path', os.path.expanduser('~/Desktop'))
         
         # 应用版本和导出路径
-        self.app_version = "1.0.2"
+        self.app_version = "1.0.1"
         self.export_path = self.config_manager.get('export_path', os.path.expanduser('~/Desktop'))
         
         # 检测更新
@@ -945,7 +945,8 @@ class KeywordAnalyzerGUI(QMainWindow):
         
         # 创建对话框，支持选择文件或文件夹
         dialog = QFileDialog(self)
-        dialog.setFileMode(QFileDialog.FileMode.ExistingFiles)
+        dialog.setFileMode(QFileDialog.FileMode.ExistingFiles | QFileDialog.FileMode.DirectoryOnly)
+        dialog.setOption(QFileDialog.DontUseNativeDialog, False)
         dialog.setNameFilters([
             "视频文件 (*.mp4 *.avi *.mov *.mkv *.flv *.wmv *.webm *.m4v *.3gp *.ts)",
             "所有文件 (*)"
