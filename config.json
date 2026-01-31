@@ -1,7 +1,7 @@
 {
-  "impression_threshold": 100,
-  "cost_threshold": 50.0,
-  "ctr_threshold": 3.0,
+  "impression_threshold": 16,
+  "cost_threshold": 3.91,
+  "ctr_threshold": 6.91,
   "conversion_threshold": 1.0,
   "window_width": 900,
   "window_height": 600,
