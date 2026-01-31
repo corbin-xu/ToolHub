@@ -207,7 +207,7 @@ class KeywordAnalyzerGUI(QMainWindow):
         self.last_file_path = self.config_manager.get('last_csv_path', os.path.expanduser('~/Desktop'))
         
         # 应用版本和导出路径
-        self.app_version = "1.0.1"
+        self.app_version = "1.0.2"
         self.export_path = self.config_manager.get('export_path', os.path.expanduser('~/Desktop'))
         
         # 检测更新
@@ -888,19 +888,38 @@ class KeywordAnalyzerGUI(QMainWindow):
         return widget
     
     def import_video_files(self):
-        """导入视频文件"""
-        file_paths, _ = QFileDialog.getOpenFileNames(
-            self, "选择视频文件", "",
-            "视频文件 (*.mp4 *.avi *.mov *.mkv *.flv *.wmv *.webm *.m4v *.3gp *.ts);;所有文件 (*)"
-        )
+        """导入视频文件或文件夹"""
+        import os
+        from PyQt5.QtWidgets import QFileDialog
         
-        if not file_paths:
+        # 创建对话框，支持选择文件或文件夹
+        dialog = QFileDialog(self)
+        dialog.setFileMode(QFileDialog.FileMode.ExistingFiles)
+        dialog.setNameFilters([
+            "视频文件 (*.mp4 *.avi *.mov *.mkv *.flv *.wmv *.webm *.m4v *.3gp *.ts)",
+            "所有文件 (*)"
+        ])
+        dialog.setWindowTitle("选择视频文件或文件夹")
+        
+        if dialog.exec_() != QFileDialog.Accepted:
             return
         
-        # 添加到列表
-        for file_path in file_paths:
-            if file_path not in self.video_files_list:
-                self.video_files_list.append(file_path)
+        selected_paths = dialog.selectedFiles()
+        video_extensions = ('.mp4', '.avi', '.mov', '.mkv', '.flv', '.wmv', '.webm', '.m4v', '.3gp', '.ts')
+        
+        for path in selected_paths:
+            if os.path.isdir(path):
+                # 如果是文件夹，递归扫描所有视频文件
+                for root, dirs, files in os.walk(path):
+                    for file in files:
+                        if file.lower().endswith(video_extensions):
+                            file_path = os.path.join(root, file)
+                            if file_path not in self.video_files_list:
+                                self.video_files_list.append(file_path)
+            elif os.path.isfile(path) and path.lower().endswith(video_extensions):
+                # 如果是视频文件，直接添加
+                if path not in self.video_files_list:
+                    self.video_files_list.append(path)
         
         # 刷新表格
         self.refresh_video_files_table()
