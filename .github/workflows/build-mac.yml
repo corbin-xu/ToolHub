@@ -37,7 +37,17 @@ jobs:
       - name: Create DMG
         run: |
           cd dist
-          hdiutil create -volname "ToolHub" -srcfolder ToolHub.app -ov -format UDZO ToolHub-1.1.dmg
+          
+          # 创建临时目录用于 DMG 内容
+          mkdir -p dmg_temp
+          cp -r ToolHub.app dmg_temp/
+          ln -s /Applications dmg_temp/Applications
+          
+          # 创建 DMG
+          hdiutil create -volname "ToolHub" -srcfolder dmg_temp -ov -format UDZO ToolHub-1.1.dmg
+          
+          # 清理临时目录
+          rm -rf dmg_temp
       
       - name: Upload to Release
         uses: softprops/action-gh-release@v1
