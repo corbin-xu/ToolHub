@@ -53,9 +53,18 @@ class VideoCoverExtractor:
             bool: 是否成功
         """
         try:
+            import shutil
+            
+            # 尝试找到 ffmpeg
+            ffmpeg_cmd = shutil.which('ffmpeg')
+            
+            if not ffmpeg_cmd:
+                print("[ERROR] 找不到 ffmpeg，请确保已安装")
+                return False
+            
             # 使用 ffmpeg 提取视频第一帧
             cmd = [
-                'ffmpeg',
+                ffmpeg_cmd,
                 '-i', video_path,
                 '-vframes', '1',
                 '-q:v', '2',
