@@ -1087,6 +1087,7 @@ class KeywordAnalyzerGUI(QMainWindow):
             
             success_count = 0
             failed_count = 0
+            error_messages = []
             
             for idx, video_path in enumerate(self.video_files_list):
                 try:
@@ -1102,19 +1103,39 @@ class KeywordAnalyzerGUI(QMainWindow):
                         success_count += 1
                     else:
                         failed_count += 1
+                        error_messages.append(f"无法提取: {video_name}")
                 
                 except Exception as e:
                     print(f"[ERROR] 处理视频失败: {video_path}, {str(e)}")
                     failed_count += 1
+                    error_messages.append(f"错误: {video_name} - {str(e)}")
             
             # 显示结果
-            QMessageBox.information(
-                self, "导出完成",
-                f"成功: {success_count} 个\n失败: {failed_count} 个"
-            )
+            result_msg = f"成功: {success_count} 个\n失败: {failed_count} 个"
+            
+            if failed_count > 0:
+                if failed_count <= 5:
+                    result_msg += "\n\n失败原因:\n" + "\n".join(error_messages[:5])
+                else:
+                    result_msg += "\n\n失败原因 (前5个):\n" + "\n".join(error_messages[:5])
+                    result_msg += f"\n... 还有 {failed_count - 5} 个失败"
+                
+                # 如果全部失败，显示详细错误
+                if success_count == 0:
+                    result_msg += "\n\n提示: 请确保已安装 ffmpeg\n"
+                    result_msg += "macOS: brew install ffmpeg\n"
+                    result_msg += "Windows: https://ffmpeg.org/download.html"
+            
+            QMessageBox.information(self, "导出完成", result_msg)
         
         except ImportError:
-            QMessageBox.warning(self, "错误", "需要安装 ffmpeg。请访问 https://ffmpeg.org/download.html")
+            QMessageBox.warning(
+                self, 
+                "错误", 
+                "需要安装 ffmpeg。\n\n"
+                "macOS: brew install ffmpeg\n"
+                "Windows: https://ffmpeg.org/download.html"
+            )
         except Exception as e:
             QMessageBox.critical(self, "错误", f"导出失败: {str(e)}")
     

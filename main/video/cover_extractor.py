@@ -54,13 +54,31 @@ class VideoCoverExtractor:
         """
         try:
             import shutil
+            import sys
             
             # 尝试找到 ffmpeg
+            ffmpeg_cmd = None
+            
+            # 1. 先尝试 shutil.which
             ffmpeg_cmd = shutil.which('ffmpeg')
             
+            # 2. 如果找不到，尝试常见的 Homebrew 路径
             if not ffmpeg_cmd:
-                print("[ERROR] 找不到 ffmpeg，请确保已安装")
+                homebrew_paths = [
+                    '/usr/local/bin/ffmpeg',
+                    '/opt/homebrew/bin/ffmpeg',
+                    '/usr/local/opt/ffmpeg/bin/ffmpeg'
+                ]
+                for path in homebrew_paths:
+                    if os.path.exists(path):
+                        ffmpeg_cmd = path
+                        break
+            
+            if not ffmpeg_cmd:
+                print("[ERROR] 找不到 ffmpeg，请确保已安装: brew install ffmpeg")
                 return False
+            
+            print(f"[DEBUG] 使用 ffmpeg: {ffmpeg_cmd}")
             
             # 使用 ffmpeg 提取视频第一帧
             cmd = [
@@ -72,6 +90,8 @@ class VideoCoverExtractor:
                 output_path
             ]
             
+            print(f"[DEBUG] 执行命令: {' '.join(cmd)}")
+            
             # 运行命令，抑制输出
             result = subprocess.run(
                 cmd,
@@ -80,9 +100,12 @@ class VideoCoverExtractor:
                 timeout=30
             )
             
+            print(f"[DEBUG] 返回码: {result.returncode}")
             return result.returncode == 0
         except Exception as e:
             print(f"[ERROR] 提取视频封面失败: {str(e)}")
+            import traceback
+            traceback.print_exc()
             return False
     
     @staticmethod
