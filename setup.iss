@@ -1,6 +1,6 @@
 [Setup]
 AppName=JD Supplier Label Generator
-AppVersion=1.0.0
+AppVersion=1.0.1
 AppPublisher=corbin-xu
 AppPublisherURL=https://github.com/corbin-xu/JD Supplier Label Generator
 AppSupportURL=https://github.com/corbin-xu/JD Supplier Label Generator
@@ -10,7 +10,7 @@ DefaultGroupName=JD Supplier Label Generator
 AllowNoIcons=yes
 LicenseFile=LICENSE
 OutputDir=dist
-OutputBaseFilename=jd-supplier-label-generator-1.0.0-setup
+OutputBaseFilename=jd-supplier-label-generator-1.0.1-setup
 Compression=zip
 SolidCompression=yes
 PrivilegesRequired=lowest
@@ -25,7 +25,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 
 [Files]
 Source: "dist\jd-supplier-label-generator.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "templates\*"; DestDir: "{app}\templates"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "templates\*.pld"; DestDir: "{app}\templates"; Flags: ignoreversion
 Source: "config.json"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
