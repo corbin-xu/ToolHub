@@ -296,19 +296,82 @@ class KeywordAnalyzerGUI(QMainWindow):
         try:
             import urllib.request
             import json
+            import ssl
             
             # GitHub API URL
             github_api_url = "https://api.github.com/repos/corbin-xu/jd-supplier-label-generator/releases/latest"
             
+            print("[DEBUG] ========== 开始检测更新 ==========")
+            print(f"[DEBUG] 当前版本: {self.app_version}")
+            print(f"[DEBUG] API URL: {github_api_url}")
+            
             try:
-                with urllib.request.urlopen(github_api_url, timeout=5) as response:
-                    data = json.loads(response.read().decode())
+                print("[DEBUG] 正在创建 SSL 上下文...")
+                # 创建 SSL 上下文，禁用证书验证（用于 PyInstaller 打包的应用）
+                ssl_context = ssl.create_default_context()
+                ssl_context.check_hostname = False
+                ssl_context.verify_mode = ssl.CERT_NONE
+                print("[DEBUG] SSL 上下文创建成功")
+                
+                print("[DEBUG] 正在创建请求...")
+                request = urllib.request.Request(github_api_url)
+                request.add_header('User-Agent', 'jd-supplier-label-generator/1.0.2')
+                print("[DEBUG] 请求创建成功")
+                
+                print("[DEBUG] 正在连接到 GitHub API...")
+                with urllib.request.urlopen(request, context=ssl_context, timeout=10) as response:
+                    print(f"[DEBUG] 连接成功！状态码: {response.status}")
+                    print("[DEBUG] 正在读取响应数据...")
+                    response_data = response.read().decode()
+                    print(f"[DEBUG] 响应数据长度: {len(response_data)} 字节")
+                    
+                    data = json.loads(response_data)
                     latest_version = data.get('tag_name', 'unknown').lstrip('v')
+                    print(f"[DEBUG] 最新版本: {latest_version}")
                     
                     if latest_version > self.app_version:
                         print(f"[INFO] 发现新版本: {latest_version}，当前版本: {self.app_version}")
-            except urllib.error.URLError:
-                print("[INFO] 无法连接到 GitHub，跳过更新检测")
+                    else:
+                        print(f"[INFO] 已是最新版本")
+                        
+            except urllib.error.URLError as e:
+                print(f"[ERROR] URLError 异常!")
+                print(f"[ERROR] 错误信息: {e}")
+                print(f"[ERROR] 错误原因: {e.reason if hasattr(e, 'reason') else '未知'}")
+                if hasattr(e, '__traceback__'):
+                    import traceback
+                    print("[ERROR] 完整堆栈:")
+                    traceback.print_exc()
+                    
+            except urllib.error.HTTPError as e:
+                print(f"[ERROR] HTTPError 异常!")
+                print(f"[ERROR] HTTP 状态码: {e.code}")
+                print(f"[ERROR] 错误信息: {e.reason}")
+                
+            except json.JSONDecodeError as e:
+                print(f"[ERROR] JSON 解析异常!")
+                print(f"[ERROR] 错误信息: {e}")
+                
+            except Exception as e:
+                print(f"[ERROR] 未知异常!")
+                print(f"[ERROR] 异常类型: {type(e).__name__}")
+                print(f"[ERROR] 错误信息: {str(e)}")
+                import traceback
+                traceback.print_exc()
+                
+            print("[DEBUG] ========== 检测更新完成 ==========")
+        
+        except Exception as e:
+            print(f"[ERROR] 外层异常: {str(e)}")
+            import traceback
+            traceback.print_exc()
+                    
+                    if latest_version > self.app_version:
+                        print(f"[INFO] 发现新版本: {latest_version}，当前版本: {self.app_version}")
+            except urllib.error.URLError as e:
+                print(f"[INFO] 无法连接到 GitHub: {str(e)}")
+            except Exception as e:
+                print(f"[INFO] 检测更新异常: {str(e)}")
         
         except Exception as e:
             print(f"[INFO] 检测更新失败: {str(e)}")
@@ -5393,15 +5456,38 @@ class AppSettingsDialog(QDialog):
         try:
             import urllib.request
             import json
+            import ssl
             from datetime import datetime
             
             # GitHub API URL
             github_api_url = "https://api.github.com/repos/corbin-xu/jd-supplier-label-generator/releases/latest"
             
+            print("[DEBUG] ========== 开始检测更新（设置窗口） ==========")
+            print(f"[DEBUG] 当前版本: {self.app_version}")
+            print(f"[DEBUG] API URL: {github_api_url}")
+            
             try:
-                with urllib.request.urlopen(github_api_url, timeout=5) as response:
-                    data = json.loads(response.read().decode())
+                print("[DEBUG] 正在创建 SSL 上下文...")
+                ssl_context = ssl.create_default_context()
+                ssl_context.check_hostname = False
+                ssl_context.verify_mode = ssl.CERT_NONE
+                print("[DEBUG] SSL 上下文创建成功")
+                
+                print("[DEBUG] 正在创建请求...")
+                request = urllib.request.Request(github_api_url)
+                request.add_header('User-Agent', 'jd-supplier-label-generator/1.0.2')
+                print("[DEBUG] 请求创建成功")
+                
+                print("[DEBUG] 正在连接到 GitHub API...")
+                with urllib.request.urlopen(request, context=ssl_context, timeout=10) as response:
+                    print(f"[DEBUG] 连接成功！状态码: {response.status}")
+                    print("[DEBUG] 正在读取响应数据...")
+                    response_data = response.read().decode()
+                    print(f"[DEBUG] 响应数据长度: {len(response_data)} 字节")
+                    
+                    data = json.loads(response_data)
                     latest_version = data.get('tag_name', 'unknown').lstrip('v')
+                    print(f"[DEBUG] 最新版本: {latest_version}")
                     
                     # 获取发布日期
                     published_at = data.get('published_at', '')
@@ -5414,17 +5500,49 @@ class AppSettingsDialog(QDialog):
                             self.release_date = published_at[:10]
                     
                     if latest_version > self.app_version:
+                        print(f"[INFO] 发现新版本: {latest_version}")
                         QMessageBox.information(
                             self, 
                             "有新版本", 
                             f"发现新版本: {latest_version}\n当前版本: {self.app_version}\n\n请访问 GitHub 下载最新版本"
                         )
                     else:
+                        print(f"[INFO] 已是最新版本")
                         QMessageBox.information(self, "检测完成", "已是最新版本")
-            except urllib.error.URLError:
-                QMessageBox.warning(self, "检测失败", "无法连接到 GitHub，请检查网络连接")
+                        
+            except urllib.error.URLError as e:
+                print(f"[ERROR] URLError 异常!")
+                print(f"[ERROR] 错误信息: {e}")
+                print(f"[ERROR] 错误原因: {e.reason if hasattr(e, 'reason') else '未知'}")
+                import traceback
+                traceback.print_exc()
+                QMessageBox.warning(self, "检测失败", f"无法连接到 GitHub: {str(e)}")
+                
+            except urllib.error.HTTPError as e:
+                print(f"[ERROR] HTTPError 异常!")
+                print(f"[ERROR] HTTP 状态码: {e.code}")
+                print(f"[ERROR] 错误信息: {e.reason}")
+                QMessageBox.warning(self, "检测失败", f"HTTP 错误 {e.code}: {e.reason}")
+                
+            except json.JSONDecodeError as e:
+                print(f"[ERROR] JSON 解析异常!")
+                print(f"[ERROR] 错误信息: {e}")
+                QMessageBox.warning(self, "检测失败", "响应数据格式错误")
+                
+            except Exception as e:
+                print(f"[ERROR] 未知异常!")
+                print(f"[ERROR] 异常类型: {type(e).__name__}")
+                print(f"[ERROR] 错误信息: {str(e)}")
+                import traceback
+                traceback.print_exc()
+                QMessageBox.warning(self, "检测失败", f"检测更新失败: {str(e)}")
+                
+            print("[DEBUG] ========== 检测更新完成 ==========")
         
         except Exception as e:
+            print(f"[ERROR] 外层异常: {str(e)}")
+            import traceback
+            traceback.print_exc()
             QMessageBox.warning(self, "检测失败", f"检测更新失败: {str(e)}")
     
     def get_export_path(self):
