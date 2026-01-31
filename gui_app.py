@@ -338,10 +338,8 @@ class KeywordAnalyzerGUI(QMainWindow):
                 print(f"[ERROR] URLError 异常!")
                 print(f"[ERROR] 错误信息: {e}")
                 print(f"[ERROR] 错误原因: {e.reason if hasattr(e, 'reason') else '未知'}")
-                if hasattr(e, '__traceback__'):
-                    import traceback
-                    print("[ERROR] 完整堆栈:")
-                    traceback.print_exc()
+                import traceback
+                traceback.print_exc()
                     
             except urllib.error.HTTPError as e:
                 print(f"[ERROR] HTTPError 异常!")
@@ -365,16 +363,6 @@ class KeywordAnalyzerGUI(QMainWindow):
             print(f"[ERROR] 外层异常: {str(e)}")
             import traceback
             traceback.print_exc()
-                    
-                    if latest_version > self.app_version:
-                        print(f"[INFO] 发现新版本: {latest_version}，当前版本: {self.app_version}")
-            except urllib.error.URLError as e:
-                print(f"[INFO] 无法连接到 GitHub: {str(e)}")
-            except Exception as e:
-                print(f"[INFO] 检测更新异常: {str(e)}")
-        
-        except Exception as e:
-            print(f"[INFO] 检测更新失败: {str(e)}")
     
     def on_sn_prefix_changed(self, prefix):
         """品牌前缀改变时的处理"""
