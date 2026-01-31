@@ -34,7 +34,6 @@ Thumbs.db
 # Build
 *.exe
 *.msi
-*.spec
 build/
 dist/
 
