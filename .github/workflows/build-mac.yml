@@ -24,8 +24,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install PyQt5==5.15.9 --only-binary :all:
-          pip install openpyxl
+          pip install -r requirements.txt
           pip install pyinstaller
       
       - name: Build Mac app
