@@ -903,6 +903,10 @@ class KeywordAnalyzerGUI(QMainWindow):
         import_folder_btn.clicked.connect(self.import_video_folder)
         button_layout.addWidget(import_folder_btn)
         
+        clear_btn = QPushButton("清空列表")
+        clear_btn.clicked.connect(self.clear_video_files)
+        button_layout.addWidget(clear_btn)
+        
         button_layout.addStretch()
         
         export_table_btn = QPushButton("导出表格")
@@ -985,6 +989,10 @@ class KeywordAnalyzerGUI(QMainWindow):
         # 递归扫描文件夹中的所有视频文件
         for root, dirs, files in os.walk(folder_path):
             for file in files:
+                # 跳过 macOS 资源分叉文件
+                if file.startswith('._'):
+                    continue
+                
                 if file.lower().endswith(video_extensions):
                     file_path = os.path.join(root, file)
                     if file_path not in self.video_files_list:
@@ -992,6 +1000,23 @@ class KeywordAnalyzerGUI(QMainWindow):
         
         # 刷新表格
         self.refresh_video_files_table()
+    
+    def clear_video_files(self):
+        """清空视频文件列表"""
+        if not self.video_files_list:
+            QMessageBox.information(self, "提示", "列表已为空")
+            return
+        
+        reply = QMessageBox.question(
+            self, 
+            "确认清空", 
+            f"确定要清空列表中的 {len(self.video_files_list)} 个文件吗？",
+            QMessageBox.Yes | QMessageBox.No
+        )
+        
+        if reply == QMessageBox.Yes:
+            self.video_files_list.clear()
+            self.refresh_video_files_table()
     
     def refresh_video_files_table(self):
         """刷新视频文件表格"""
@@ -1074,16 +1099,15 @@ class KeywordAnalyzerGUI(QMainWindow):
             QMessageBox.warning(self, "警告", "请先导入视频文件")
             return
         
-        # 选择输出文件夹
-        output_folder = QFileDialog.getExistingDirectory(
-            self, "选择输出文件夹", ""
-        )
-        
-        if not output_folder:
-            return
-        
         try:
+            import os
             from main.video.cover_extractor import VideoCoverExtractor
+            
+            # 使用全局导出路径，在其下创建 "视频封面" 文件夹
+            output_folder = os.path.join(self.export_path, "视频封面")
+            
+            # 创建文件夹
+            os.makedirs(output_folder, exist_ok=True)
             
             success_count = 0
             failed_count = 0
@@ -1092,7 +1116,6 @@ class KeywordAnalyzerGUI(QMainWindow):
             for idx, video_path in enumerate(self.video_files_list):
                 try:
                     # 获取视频文件名（不含扩展名）
-                    import os
                     video_name = os.path.splitext(os.path.basename(video_path))[0]
                     
                     # 输出图片路径
@@ -1111,7 +1134,7 @@ class KeywordAnalyzerGUI(QMainWindow):
                     error_messages.append(f"错误: {video_name} - {str(e)}")
             
             # 显示结果
-            result_msg = f"成功: {success_count} 个\n失败: {failed_count} 个"
+            result_msg = f"成功: {success_count} 个\n失败: {failed_count} 个\n\n保存位置: {output_folder}"
             
             if failed_count > 0:
                 if failed_count <= 5:
