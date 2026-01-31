@@ -37,7 +37,17 @@ jobs:
       - name: Create DMG
         run: |
           cd dist
-          hdiutil create -volname "JD Supplier Label Generator" -srcfolder jd-supplier-label-generator.app -ov -format UDZO jd-supplier-label-generator-1.1.dmg
+          
+          # 创建临时目录用于 DMG 内容
+          mkdir -p dmg_temp
+          cp -r jd-supplier-label-generator.app dmg_temp/
+          ln -s /Applications dmg_temp/Applications
+          
+          # 创建 DMG
+          hdiutil create -volname "JD Supplier Label Generator" -srcfolder dmg_temp -ov -format UDZO jd-supplier-label-generator-1.1.dmg
+          
+          # 清理临时目录
+          rm -rf dmg_temp
       
       - name: Upload to Release
         uses: softprops/action-gh-release@v1
