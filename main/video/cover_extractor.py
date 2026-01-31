@@ -41,24 +41,22 @@ class VideoCoverExtractor:
         return video_files
     
     @staticmethod
-    def extract_cover(video_path, output_path, timestamp="00:00:01"):
+    def extract_cover(video_path, output_path):
         """
-        从视频中提取封面
+        从视频中提取第一帧作为封面
         
         Args:
             video_path: 视频文件路径
             output_path: 输出图片路径
-            timestamp: 提取时间戳（格式：HH:MM:SS）
             
         Returns:
             bool: 是否成功
         """
         try:
-            # 使用 ffmpeg 提取视频封面
+            # 使用 ffmpeg 提取视频第一帧
             cmd = [
                 'ffmpeg',
                 '-i', video_path,
-                '-ss', timestamp,
                 '-vframes', '1',
                 '-q:v', '2',
                 '-y',  # 覆盖输出文件

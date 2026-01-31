@@ -1,6 +1,6 @@
 [Setup]
 AppName=ToolHub
-AppVersion=1.0
+AppVersion=1.1
 AppPublisher=corbin-xu
 AppPublisherURL=https://github.com/corbin-xu/ToolHub
 AppSupportURL=https://github.com/corbin-xu/ToolHub
@@ -10,7 +10,7 @@ DefaultGroupName=ToolHub
 AllowNoIcons=yes
 LicenseFile=LICENSE
 OutputDir=dist
-OutputBaseFilename=ToolHub-1.0-setup
+OutputBaseFilename=ToolHub-1.1-setup
 Compression=zip
 SolidCompression=yes
 PrivilegesRequired=lowest
@@ -25,7 +25,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 
 [Files]
 Source: "dist\ToolHub.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "templates\*"; DestDir: "{app}\templates"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "templates\*.pld"; DestDir: "{app}\templates"; Flags: ignoreversion
 Source: "config.json"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]

@@ -21,38 +21,11 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt, QThread, pyqtSignal, QSize
 from PyQt5.QtGui import QFont, QColor, QIcon, QPixmap, QPainter
-from main.keyword.analyzer import KeywordOptimizer
-from main.keyword.data_processor import DataProcessor
-from main.keyword.visualizer import Visualizer
 from main.common.config import ConfigManager
 from main.label.label_generator import LabelGenerator
 from main.label.carton_mark_generator import CartonMarkGenerator
 
 
-class DataLoadThread(QThread):
-    """数据加载线程"""
-    finished = pyqtSignal()
-    error = pyqtSignal(str)
-    success = pyqtSignal(int)
-    
-    def __init__(self, file_path):
-        super().__init__()
-        self.file_path = file_path
-        self.processor = DataProcessor()
-    
-    def run(self):
-        try:
-            data, errors = self.processor.load_keyword_report(self.file_path)
-            if errors:
-                self.error.emit(f"加载完成，但有 {len(errors)} 个警告")
-            if data:
-                self.success.emit(len(data))
-            else:
-                self.error.emit("没有有效数据")
-        except Exception as e:
-            self.error.emit(f"加载失败: {str(e)}")
-        finally:
-            self.finished.emit()
 
 
 class ExportThread(QThread):
@@ -220,12 +193,6 @@ class KeywordAnalyzerGUI(QMainWindow):
         self.setFixedSize(900, 600)
         self.setGeometry(100, 100, 900, 600)
         
-        self.optimizer = KeywordOptimizer(self.config_manager.get_thresholds())
-        self.processor = DataProcessor()
-        self.visualizer = Visualizer()
-        self.current_keywords = []
-        self.recommended_thresholds = {}  # 存储推荐阈值
-        
         # Excel导入相关
         self.current_excel_file = None
         self.current_excel_workbook = None
@@ -240,7 +207,7 @@ class KeywordAnalyzerGUI(QMainWindow):
         self.last_file_path = self.config_manager.get('last_csv_path', os.path.expanduser('~/Desktop'))
         
         # 应用版本和导出路径
-        self.app_version = "1.0"
+        self.app_version = "1.1"
         self.export_path = self.config_manager.get('export_path', os.path.expanduser('~/Desktop'))
         
         # 检测更新
@@ -271,16 +238,10 @@ class KeywordAnalyzerGUI(QMainWindow):
         self.button_group.addButton(self.label_btn, 0)
         sidebar_layout.addWidget(self.label_btn)
         
-        self.keyword_btn = QPushButton("关键词分析")
-        self.keyword_btn.setCheckable(True)
-        self.keyword_btn.clicked.connect(lambda: self.switch_tool("keyword"))
-        self.button_group.addButton(self.keyword_btn, 1)
-        sidebar_layout.addWidget(self.keyword_btn)
-        
-        self.video_btn = QPushButton("种草助手")
+        self.video_btn = QPushButton("种草视频")
         self.video_btn.setCheckable(True)
         self.video_btn.clicked.connect(lambda: self.switch_tool("video"))
-        self.button_group.addButton(self.video_btn, 2)
+        self.button_group.addButton(self.video_btn, 1)
         sidebar_layout.addWidget(self.video_btn)
         
         sidebar_layout.addStretch()
@@ -304,10 +265,6 @@ class KeywordAnalyzerGUI(QMainWindow):
         label_widget = self.create_label_tool()
         self.tool_stack.addWidget(label_widget)
         
-        # 关键词分析工具页面
-        keyword_widget = self.create_keyword_tool()
-        self.tool_stack.addWidget(keyword_widget)
-        
         # 种草助手页面
         video_widget = self.create_video_tool()
         self.tool_stack.addWidget(video_widget)
@@ -320,10 +277,8 @@ class KeywordAnalyzerGUI(QMainWindow):
         """切换工具"""
         if tool_name == "label":
             self.tool_stack.setCurrentIndex(0)
-        elif tool_name == "keyword":
-            self.tool_stack.setCurrentIndex(1)
         elif tool_name == "video":
-            self.tool_stack.setCurrentIndex(2)
+            self.tool_stack.setCurrentIndex(1)
     
     def show_app_settings(self):
         """显示应用设置对话框"""
@@ -877,34 +832,6 @@ class KeywordAnalyzerGUI(QMainWindow):
         # 品牌改变时不再改变前缀，前缀由筛选类型决定
         pass
     
-    def create_keyword_tool(self):
-        """创建关键词分析工具页面"""
-        widget = QWidget()
-        layout = QVBoxLayout()
-        layout.setSpacing(10)
-        layout.setContentsMargins(10, 10, 10, 10)
-        
-        # 工具栏
-        toolbar_layout = self.create_toolbar()
-        layout.addLayout(toolbar_layout)
-        
-        # 创建关键词分析表
-        self.create_keywords_table()
-        layout.addWidget(self.keywords_table)
-        
-        # 加载数据信息（表格下方）
-        info_layout = QHBoxLayout()
-        info_layout.setContentsMargins(0, 5, 0, 3)
-        info_layout.setSpacing(0)
-        self.info_label = QLabel("未加载数据")
-        self.info_label.setFont(QFont("Arial", 9))
-        info_layout.addWidget(self.info_label)
-        info_layout.addStretch()
-        
-        layout.addLayout(info_layout)
-        
-        widget.setLayout(layout)
-        return widget
     
     def create_video_tool(self):
         """创建种草助手（视频封面提取）工具页面"""
@@ -913,105 +840,195 @@ class KeywordAnalyzerGUI(QMainWindow):
         layout.setSpacing(10)
         layout.setContentsMargins(10, 10, 10, 10)
         
-        # 标题
-        title_label = QLabel("种草助手 - 视频封面提取")
-        title_font = QFont("Arial", 12, QFont.Bold)
-        title_label.setFont(title_font)
-        layout.addWidget(title_label)
-        
-        # 分隔线
-        separator = QLabel()
-        separator.setStyleSheet("border-top: 1px solid #cccccc;")
-        separator.setFixedHeight(1)
-        layout.addWidget(separator)
-        
-        # 功能说明
-        info_text = QLabel(
-            "选择视频文件或文件夹，自动提取视频封面。\n"
-            "支持的格式: MP4, AVI, MOV, MKV, FLV, WMV, WEBM, M4V, 3GP, TS"
-        )
-        info_text.setStyleSheet("color: #666666; font-size: 10px;")
-        layout.addWidget(info_text)
-        
-        # 输入选择区域
-        input_layout = QHBoxLayout()
-        input_layout.setSpacing(10)
-        
-        input_layout.addWidget(QLabel("输入:"))
-        self.video_input_label = QLineEdit()
-        self.video_input_label.setReadOnly(True)
-        self.video_input_label.setPlaceholderText("选择视频文件或文件夹")
-        input_layout.addWidget(self.video_input_label)
-        
-        select_input_btn = QPushButton("选择")
-        select_input_btn.clicked.connect(self.select_video_input)
-        input_layout.addWidget(select_input_btn)
-        
-        layout.addLayout(input_layout)
-        
-        # 输出选择区域
-        output_layout = QHBoxLayout()
-        output_layout.setSpacing(10)
-        
-        output_layout.addWidget(QLabel("输出:"))
-        self.video_output_label = QLineEdit()
-        self.video_output_label.setReadOnly(True)
-        self.video_output_label.setPlaceholderText("选择输出文件夹")
-        output_layout.addWidget(self.video_output_label)
-        
-        select_output_btn = QPushButton("选择")
-        select_output_btn.clicked.connect(self.select_video_output)
-        output_layout.addWidget(select_output_btn)
-        
-        layout.addLayout(output_layout)
-        
-        # 提取时间戳
-        timestamp_layout = QHBoxLayout()
-        timestamp_layout.setSpacing(10)
-        
-        timestamp_layout.addWidget(QLabel("提取时间:"))
-        self.video_timestamp_input = QLineEdit()
-        self.video_timestamp_input.setText("00:00:01")
-        self.video_timestamp_input.setPlaceholderText("格式: HH:MM:SS")
-        self.video_timestamp_input.setMaximumWidth(100)
-        timestamp_layout.addWidget(self.video_timestamp_input)
-        
-        timestamp_layout.addStretch()
-        
-        layout.addLayout(timestamp_layout)
-        
-        # 进度条
-        self.video_progress_bar = QProgressBar()
-        self.video_progress_bar.setValue(0)
-        self.video_progress_bar.setVisible(False)
-        layout.addWidget(self.video_progress_bar)
-        
-        # 日志输出
-        self.video_log_text = QTextEdit()
-        self.video_log_text.setReadOnly(True)
-        self.video_log_text.setMaximumHeight(200)
-        layout.addWidget(self.video_log_text)
-        
-        # 按钮区域
+        # 上方按钮区域
         button_layout = QHBoxLayout()
         button_layout.setSpacing(10)
         
+        import_btn = QPushButton("导入")
+        import_btn.clicked.connect(self.import_video_files)
+        button_layout.addWidget(import_btn)
+        
         button_layout.addStretch()
         
-        extract_btn = QPushButton("开始提取")
-        extract_btn.clicked.connect(self.start_video_extraction)
-        button_layout.addWidget(extract_btn)
+        export_table_btn = QPushButton("导出表格")
+        export_table_btn.clicked.connect(self.export_video_table)
+        button_layout.addWidget(export_table_btn)
         
-        clear_log_btn = QPushButton("清空日志")
-        clear_log_btn.clicked.connect(self.clear_video_log)
-        button_layout.addWidget(clear_log_btn)
+        export_cover_btn = QPushButton("导出封面")
+        export_cover_btn.clicked.connect(self.export_video_covers)
+        button_layout.addWidget(export_cover_btn)
         
         layout.addLayout(button_layout)
         
-        layout.addStretch()
+        # 视频文件列表
+        self.video_files_table = QTableWidget()
+        self.video_files_table.setColumnCount(2)
+        self.video_files_table.setHorizontalHeaderLabels(["文件夹名称", "视频标题"])
+        self.video_files_table.horizontalHeader().setStretchLastSection(True)
+        self.video_files_table.setColumnWidth(0, 150)
+        self.video_files_table.verticalHeader().setVisible(False)  # 隐藏行号
+        layout.addWidget(self.video_files_table)
+        
+        # 文件信息标签（类似标签箱唛工具）
+        file_info_layout = QHBoxLayout()
+        file_info_layout.setContentsMargins(0, 5, 0, 3)
+        file_info_layout.setSpacing(0)
+        
+        self.video_info_label = QLabel("未加载数据")
+        self.video_info_label.setFont(QFont("Arial", 9))
+        file_info_layout.addWidget(self.video_info_label)
+        file_info_layout.addStretch()
+        
+        layout.addLayout(file_info_layout)
+        
+        # 存储视频文件列表
+        self.video_files_list = []
         
         widget.setLayout(layout)
         return widget
+    
+    def import_video_files(self):
+        """导入视频文件"""
+        file_paths, _ = QFileDialog.getOpenFileNames(
+            self, "选择视频文件", "",
+            "视频文件 (*.mp4 *.avi *.mov *.mkv *.flv *.wmv *.webm *.m4v *.3gp *.ts);;所有文件 (*)"
+        )
+        
+        if not file_paths:
+            return
+        
+        # 添加到列表
+        for file_path in file_paths:
+            if file_path not in self.video_files_list:
+                self.video_files_list.append(file_path)
+        
+        # 刷新表格
+        self.refresh_video_files_table()
+    
+    def refresh_video_files_table(self):
+        """刷新视频文件表格"""
+        self.video_files_table.setRowCount(0)
+        
+        import os
+        for idx, file_path in enumerate(self.video_files_list):
+            self.video_files_table.insertRow(idx)
+            
+            # 文件夹名称（上级文件夹）
+            folder_name = os.path.basename(os.path.dirname(file_path))
+            folder_item = QTableWidgetItem(folder_name)
+            self.video_files_table.setItem(idx, 0, folder_item)
+            
+            # 视频标题（文件名不含扩展名）
+            video_name = os.path.splitext(os.path.basename(file_path))[0]
+            title_item = QTableWidgetItem(video_name)
+            self.video_files_table.setItem(idx, 1, title_item)
+        
+        # 更新信息标签
+        if self.video_files_list:
+            self.video_info_label.setText(f"已加载: {len(self.video_files_list)} 个视频文件")
+        else:
+            self.video_info_label.setText("未加载数据")
+    
+    def export_video_table(self):
+        """导出视频表格为Excel"""
+        if not self.video_files_list:
+            QMessageBox.warning(self, "警告", "请先导入视频文件")
+            return
+        
+        try:
+            import openpyxl
+        except ImportError:
+            QMessageBox.warning(self, "警告", "需要安装openpyxl库。请运行: pip install openpyxl")
+            return
+        
+        # 选择保存位置
+        file_path, _ = QFileDialog.getSaveFileName(
+            self, "保存表格", "", "Excel文件 (*.xlsx);;所有文件 (*)"
+        )
+        
+        if not file_path:
+            return
+        
+        try:
+            # 创建工作簿
+            workbook = openpyxl.Workbook()
+            worksheet = workbook.active
+            worksheet.title = "视频列表"
+            
+            # 写入表头
+            worksheet['A1'] = "文件夹名称"
+            worksheet['B1'] = "视频标题"
+            
+            # 写入数据
+            import os
+            for idx, file_path in enumerate(self.video_files_list, start=2):
+                folder_name = os.path.basename(os.path.dirname(file_path))
+                video_name = os.path.splitext(os.path.basename(file_path))[0]
+                
+                worksheet[f'A{idx}'] = folder_name
+                worksheet[f'B{idx}'] = video_name
+            
+            # 调整列宽
+            worksheet.column_dimensions['A'].width = 20
+            worksheet.column_dimensions['B'].width = 30
+            
+            # 保存文件
+            workbook.save(file_path)
+            
+            QMessageBox.information(self, "成功", f"表格已导出到: {file_path}")
+        
+        except Exception as e:
+            QMessageBox.critical(self, "错误", f"导出表格失败: {str(e)}")
+    
+    def export_video_covers(self):
+        """导出视频封面"""
+        if not self.video_files_list:
+            QMessageBox.warning(self, "警告", "请先导入视频文件")
+            return
+        
+        # 选择输出文件夹
+        output_folder = QFileDialog.getExistingDirectory(
+            self, "选择输出文件夹", ""
+        )
+        
+        if not output_folder:
+            return
+        
+        try:
+            from main.video.cover_extractor import VideoCoverExtractor
+            
+            success_count = 0
+            failed_count = 0
+            
+            for idx, video_path in enumerate(self.video_files_list):
+                try:
+                    # 获取视频文件名（不含扩展名）
+                    import os
+                    video_name = os.path.splitext(os.path.basename(video_path))[0]
+                    
+                    # 输出图片路径
+                    output_image = os.path.join(output_folder, f"{video_name}.jpg")
+                    
+                    # 提取封面
+                    if VideoCoverExtractor.extract_cover(video_path, output_image):
+                        success_count += 1
+                    else:
+                        failed_count += 1
+                
+                except Exception as e:
+                    print(f"[ERROR] 处理视频失败: {video_path}, {str(e)}")
+                    failed_count += 1
+            
+            # 显示结果
+            QMessageBox.information(
+                self, "导出完成",
+                f"成功: {success_count} 个\n失败: {failed_count} 个"
+            )
+        
+        except ImportError:
+            QMessageBox.warning(self, "错误", "需要安装 ffmpeg。请访问 https://ffmpeg.org/download.html")
+        except Exception as e:
+            QMessageBox.critical(self, "错误", f"导出失败: {str(e)}")
     
     def create_label_tool(self):
         """创建标签箱唛工具页面"""
@@ -2428,114 +2445,6 @@ class KeywordAnalyzerGUI(QMainWindow):
             self.save_sheet_mapping()
             self.save_sheet_rules()
     
-    def select_video_input(self):
-        """选择视频输入（文件或文件夹）"""
-        # 弹出对话框让用户选择文件或文件夹
-        dialog = QFileDialog()
-        dialog.setFileMode(QFileDialog.AnyFile)
-        
-        # 创建自定义对话框
-        file_path = QFileDialog.getOpenFileName(
-            self, "选择视频文件", "", 
-            "视频文件 (*.mp4 *.avi *.mov *.mkv *.flv *.wmv *.webm *.m4v *.3gp *.ts);;所有文件 (*)"
-        )
-        
-        if file_path[0]:
-            self.video_input_label.setText(file_path[0])
-    
-    def select_video_output(self):
-        """选择视频输出文件夹"""
-        folder_path = QFileDialog.getExistingDirectory(
-            self, "选择输出文件夹", ""
-        )
-        
-        if folder_path:
-            self.video_output_label.setText(folder_path)
-    
-    def start_video_extraction(self):
-        """开始提取视频封面"""
-        input_path = self.video_input_label.text().strip()
-        output_path = self.video_output_label.text().strip()
-        timestamp = self.video_timestamp_input.text().strip()
-        
-        if not input_path:
-            QMessageBox.warning(self, "警告", "请选择输入文件或文件夹")
-            return
-        
-        if not output_path:
-            QMessageBox.warning(self, "警告", "请选择输出文件夹")
-            return
-        
-        # 验证时间戳格式
-        if not self._validate_timestamp(timestamp):
-            QMessageBox.warning(self, "警告", "时间戳格式错误，应为 HH:MM:SS")
-            return
-        
-        # 开始提取
-        self.video_progress_bar.setVisible(True)
-        self.video_progress_bar.setValue(0)
-        self.video_log_text.clear()
-        
-        try:
-            from main.video.cover_extractor import VideoCoverExtractor
-            
-            # 获取视频文件列表
-            video_files = VideoCoverExtractor.get_video_files(input_path)
-            
-            if not video_files:
-                self.add_video_log("未找到视频文件")
-                return
-            
-            self.add_video_log(f"找到 {len(video_files)} 个视频文件，开始提取...")
-            
-            # 批量提取
-            results = VideoCoverExtractor.extract_covers_batch(video_files, output_path)
-            
-            # 更新进度条
-            self.video_progress_bar.setValue(100)
-            
-            # 显示结果
-            success_count = len(results['success'])
-            failed_count = len(results['failed'])
-            
-            self.add_video_log(f"\n提取完成!")
-            self.add_video_log(f"成功: {success_count} 个")
-            self.add_video_log(f"失败: {failed_count} 个")
-            
-            if results['failed']:
-                self.add_video_log("\n失败的文件:")
-                for file in results['failed']:
-                    self.add_video_log(f"  - {file}")
-            
-            QMessageBox.information(
-                self, "提取完成", 
-                f"成功提取: {success_count} 个\n失败: {failed_count} 个"
-            )
-        
-        except ImportError:
-            QMessageBox.warning(self, "错误", "需要安装 ffmpeg。请访问 https://ffmpeg.org/download.html")
-        except Exception as e:
-            self.add_video_log(f"错误: {str(e)}")
-            QMessageBox.critical(self, "错误", f"提取失败: {str(e)}")
-    
-    def _validate_timestamp(self, timestamp):
-        """验证时间戳格式"""
-        import re
-        pattern = r'^(\d{1,2}):(\d{2}):(\d{2})$'
-        match = re.match(pattern, timestamp)
-        if not match:
-            return False
-        
-        hours, minutes, seconds = int(match.group(1)), int(match.group(2)), int(match.group(3))
-        return 0 <= hours <= 23 and 0 <= minutes <= 59 and 0 <= seconds <= 59
-    
-    def add_video_log(self, message):
-        """添加日志信息"""
-        self.video_log_text.append(message)
-    
-    def clear_video_log(self):
-        """清空日志"""
-        self.video_log_text.clear()
     
     def check_sheet_mapping(self, label_type, workbook):
         """检查导入的Excel文件中是否包含所有设置的工作表"""
@@ -2563,7 +2472,7 @@ class KeywordAnalyzerGUI(QMainWindow):
     
     
     
-    def create_toolbar(self):
+    def generate_box(self):
         """创建工具栏"""
         toolbar_layout = QHBoxLayout()
         toolbar_layout.setContentsMargins(0, 0, 0, 0)
