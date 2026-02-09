@@ -23,7 +23,7 @@ from PyQt5.QtCore import Qt, QThread, pyqtSignal, QSize
 from PyQt5.QtGui import QFont, QColor, QIcon, QPixmap, QPainter
 from main.common.config import ConfigManager
 from main.label.label_generator import LabelGenerator
-from main.label.carton_mark_generator import CartonMarkGenerator
+from main.label.carton_mark_generator import CartonMarkGenerator, ShantouBCartonMarkGenerator
 
 
 
@@ -207,7 +207,7 @@ class KeywordAnalyzerGUI(QMainWindow):
         self.last_file_path = self.config_manager.get('last_csv_path', os.path.expanduser('~/Desktop'))
         
         # 应用版本和导出路径
-        self.app_version = "1.1"
+        self.app_version = "1.2"
         self.export_path = self.config_manager.get('export_path', os.path.expanduser('~/Desktop'))
         
         # 检测更新
@@ -1310,12 +1310,16 @@ class KeywordAnalyzerGUI(QMainWindow):
             # 获取最大列数
             max_col = worksheet.max_column
             
-            # 设置表格列数
-            self.excel_preview_table.setColumnCount(max_col)
+            # 设置表格列数（预览时隐藏第1列“序号”，仅从第2列开始展示）
+            if max_col <= 1:
+                self.excel_preview_table.setColumnCount(max_col)
+            else:
+                self.excel_preview_table.setColumnCount(max_col - 1)
             
-            # 设置表头（第一行）
+            # 设置表头（第一行），同样跳过第1列
             headers = []
-            for col in range(1, max_col + 1):
+            start_col = 2 if max_col > 1 else 1
+            for col in range(start_col, max_col + 1):
                 header_cell = worksheet.cell(1, col)
                 headers.append(str(header_cell.value) if header_cell.value else f"列{col}")
             self.excel_preview_table.setHorizontalHeaderLabels(headers)
@@ -1326,7 +1330,9 @@ class KeywordAnalyzerGUI(QMainWindow):
             # 读取数据并填充表格（从第 2 行开始，最多显示 100 行）
             for row_idx, row_num in enumerate(range(2, min(worksheet.max_row + 1, 102))):
                 self.excel_preview_table.insertRow(row_idx)
-                for col_idx in range(1, max_col + 1):
+                # 预览时不显示第1列“序号”，从第2列开始
+                start_col = 2 if max_col > 1 else 1
+                for col_idx in range(start_col, max_col + 1):
                     cell = worksheet.cell(row_num, col_idx)
                     value = cell.value
                     item = QTableWidgetItem(str(value) if value else "")
@@ -1357,7 +1363,8 @@ class KeywordAnalyzerGUI(QMainWindow):
                         except:
                             pass
                     
-                    self.excel_preview_table.setItem(row_idx, col_idx - 1, item)
+                    # 因为跳过了第1列，这里减去 start_col 作为列索引偏移
+                    self.excel_preview_table.setItem(row_idx, col_idx - start_col, item)
             
             # 自动适应列宽
             self.excel_preview_table.resizeColumnsToContents()
@@ -1863,7 +1870,7 @@ class KeywordAnalyzerGUI(QMainWindow):
         try:
             import re
             
-            # 获取箱唛识别工作表名称
+            # 常规箱唛工作表处理逻辑（原有逻辑）
             box_recognize_config = self.config_manager.get('box_recognize_config', {
                 'sheet_name': '箱唛'
             })
@@ -1946,13 +1953,19 @@ class KeywordAnalyzerGUI(QMainWindow):
                         city_code = code
                         break
                 
+                # 新增：对于未在 CITY_OPTIONS 中配置的城市（例如“郑州”），使用通用编码“99”
                 if not city_code:
-                    continue
+                    city_code = "99"
                 
+                # 文件命名规则调整：
+                #  - 原来：使用城市代码作为前缀，例如 3.广州箱唛 或 3.广州箱唛-2
+                #  - 现在：使用箱唛工作表 A 列的“序号”作为前缀，并且后缀数字直接跟在城市名后面：
+                #    例如 序号 3、城市“郑州2” -> 3.郑州2箱唛
                 if city_suffix:
-                    output_filename = f"{city_code}.{city_base}箱唛-{city_suffix}.pld"
+                    city_label_for_file = f"{city_base}{city_suffix}"
                 else:
-                    output_filename = f"{city_code}.{city_base}箱唛.pld"
+                    city_label_for_file = city_base
+                output_filename = f"{seq_num}.{city_label_for_file}箱唛.pld"
                 output_path = os.path.join(export_folder, output_filename)
                 
                 if os.path.exists(output_path):
@@ -2047,27 +2060,33 @@ class KeywordAnalyzerGUI(QMainWindow):
                         city_code = code
                         break
                 
+                # 新增：未在 CITY_OPTIONS 中配置的城市（例如“郑州”），不再视为错误，统一使用编码“99”
                 if not city_code:
-                    print(f"[DEBUG] 未找到城市'{city_base}'的代码")
-                    skipped_rows.append(f"序号{seq_num}(未找到{city}城市代码)")
-                    continue
+                    print(f"[DEBUG] 未在 CITY_OPTIONS 中找到城市'{city_base}'，使用通用编码 99")
+                    city_code = "99"
                 
+                # 文件命名规则调整：
+                #  - 原来：使用城市代码作为前缀，例如 3.广州箱唛 或 3.广州箱唛-2
+                #  - 现在：使用箱唛工作表 A 列的“序号”作为前缀，后缀数字直接写在城市名里：
+                #    例如 序号 3、城市“郑州2” -> 3.郑州2箱唛
                 if city_suffix:
-                    output_filename = f"{city_code}.{city_base}箱唛-{city_suffix}.pld"
+                    city_label_for_file = f"{city_base}{city_suffix}"
                 else:
-                    output_filename = f"{city_code}.{city_base}箱唛.pld"
+                    city_label_for_file = city_base
+                output_filename = f"{seq_num}.{city_label_for_file}箱唛.pld"
                 output_path = os.path.join(export_folder, output_filename)
                 
                 generator = CartonMarkGenerator()
                 
-                if generator.generate_to_path(po_number, warehouse, city_code, supplier_code, output_path):
+                # 传入原始城市字段（可能包含后缀数字），用于生成新的“目的城市”展示文案
+                if generator.generate_to_path(po_number, warehouse, city_code, supplier_code, output_path, city_raw=city):
                     generated_count += 1
                     print(f"[DEBUG] 生成箱唛: {output_path}")
                 else:
                     print(f"[DEBUG] 生成箱唛失败: {output_path}")
                     skipped_rows.append(f"序号{seq_num}(生成失败)")
             
-            # 显示统计信息
+            # 显示统计信息（只统计常规箱唛）
             msg = f"箱唛导出统计:\n\n"
             msg += f"应该生成: {total_count} 个\n"
             msg += f"实际生成: {generated_count} 个\n"
@@ -2081,9 +2100,102 @@ class KeywordAnalyzerGUI(QMainWindow):
                     msg += f"  ... 还有 {len(skipped_rows) - 10} 个\n"
             
             QMessageBox.information(self, "箱唛导出完成", msg)
+
+            # 常规箱唛导出完成后，额外处理汕头B仓箱唛工作表（如果存在）
+            shantou_sheet = None
+            for name in self.current_excel_workbook.sheetnames:
+                if name.strip().lower() == "汕头b仓箱唛".lower():
+                    shantou_sheet = name
+                    break
+
+            if shantou_sheet:
+                ws_shantou = self.current_excel_workbook[shantou_sheet]
+                self._generate_shantou_b_carton_marks(ws_shantou, export_folder)
         
         except Exception as e:
             print(f"[DEBUG] 生成箱唛失败: {str(e)}")
+            import traceback
+            traceback.print_exc()
+
+    def _generate_shantou_b_carton_marks(self, ws, export_folder):
+        """汕头B仓箱唛专用生成逻辑"""
+        try:
+            print("[DEBUG] 使用汕头B仓箱唛模板生成箱唛")
+            total_count = 0
+            generated_count = 0
+            skipped_rows = []
+
+            for row in range(1, ws.max_row + 1):
+                seq_cell = ws.cell(row, 1)
+                if not seq_cell.value:
+                    continue
+
+                try:
+                    seq_num = int(str(seq_cell.value).strip())
+                except (ValueError, TypeError):
+                    continue
+
+                # 参照用户提供的模板结构：
+                #  A列: 序号
+                #  B列: 第 row 行 -> 城市（如“汕头”）
+                #  C列: row+1 行 -> 供应商
+                #       row+2 行 -> 入库库房
+                #       row+3 行 -> 需求单号
+                #       row+4 行 -> 产品规格
+                city_cell = ws.cell(row, 2)  # 城市在第2列（B列）
+                supplier_cell = ws.cell(row + 1, 3)
+                inbound_wh_cell = ws.cell(row + 2, 3)
+                demand_no_cell = ws.cell(row + 3, 3)
+                spec_cell = ws.cell(row + 4, 3)
+
+                cells = [city_cell, supplier_cell, inbound_wh_cell, demand_no_cell, spec_cell]
+                if any(c is None or c.value is None or str(c.value).strip() == "" for c in cells):
+                    skipped_rows.append(f"序号{seq_num}(必填项缺失)")
+                    continue
+
+                city = str(city_cell.value).strip()
+                supplier = str(supplier_cell.value).strip()
+                inbound_warehouse = str(inbound_wh_cell.value).strip()
+                demand_no = str(demand_no_cell.value).strip()
+                product_spec = str(spec_cell.value).strip()
+
+                print(
+                    f"[DEBUG] 汕头B仓 行{row}: 序号={seq_num}, 城市={city}, 供应商={supplier}, "
+                    f"入库库房={inbound_warehouse}, 需求单号={demand_no}, 产品规格={product_spec}"
+                )
+
+                generator = ShantouBCartonMarkGenerator()
+                if generator.generate(
+                    seq_num=seq_num,
+                    city=city,
+                    supplier=supplier,
+                    inbound_warehouse=inbound_warehouse,
+                    demand_no=demand_no,
+                    product_spec=product_spec,
+                    output_dir=export_folder,
+                ):
+                    generated_count += 1
+                else:
+                    skipped_rows.append(f"序号{seq_num}(生成失败)")
+
+                total_count += 1
+
+            # 显示统计信息
+            msg = f"箱唛导出统计(汕头B仓):\n\n"
+            msg += f"应该生成: {total_count} 个\n"
+            msg += f"实际生成: {generated_count} 个\n"
+            msg += f"被跳过: {len(skipped_rows)} 个\n"
+
+            if skipped_rows:
+                msg += f"\n被跳过的箱唛:\n"
+                for item in skipped_rows[:10]:
+                    msg += f"  • {item}\n"
+                if len(skipped_rows) > 10:
+                    msg += f"  ... 还有 {len(skipped_rows) - 10} 个\n"
+
+            QMessageBox.information(self, "箱唛导出完成", msg)
+        except Exception as e:
+            print(f"[DEBUG] 汕头B仓箱唛生成失败: {str(e)}")
             import traceback
             traceback.print_exc()
     
