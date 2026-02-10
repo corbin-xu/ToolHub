@@ -5,9 +5,17 @@
 """
 
 import os
+import sys
 import shutil
 import re
 from pathlib import Path
+
+
+def _get_app_base_dir() -> Path:
+    """应用根目录：安装包运行时为 exe 所在目录，否则为项目根目录（main/label 的上级两级）。"""
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).parent.resolve()
+    return Path(__file__).parent.parent.parent.resolve()
 
 
 class CartonMarkGenerator:
@@ -374,9 +382,8 @@ class CartonMarkGenerator:
     def __init__(self, template_path: str = None):
         """初始化箱唛生成器"""
         if template_path is None:
-            # 使用相对路径查找模板
-            current_dir = Path(__file__).parent.parent.parent
-            template_path = current_dir / "templates" / "carton_mark.pld"
+            base_dir = _get_app_base_dir()
+            template_path = base_dir / "templates" / "carton_mark.pld"
         
         self.template_path = str(template_path)
         self.content = None
@@ -644,8 +651,8 @@ class ShantouBCartonMarkGenerator:
 
     def __init__(self, template_path: str | None = None) -> None:
         if template_path is None:
-            current_dir = Path(__file__).parent.parent.parent
-            template_path = current_dir / "templates" / "shantou_b_carton_mark.pld"
+            base_dir = _get_app_base_dir()
+            template_path = base_dir / "templates" / "shantou_b_carton_mark.pld"
 
         self.template_path = str(template_path)
         self.content: bytearray | None = None
