@@ -1,0 +1,6 @@
+# Use English for commit messages to avoid encoding issues on GitHub.
+# Example: Add feature X / Fix bug in Y / Update README
+#
+# <type>: <short summary>
+#
+# (optional body)

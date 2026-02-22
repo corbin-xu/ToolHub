@@ -70,6 +70,8 @@ python gui_app.py
 - **GitHub**: [corbin-xu](https://github.com/corbin-xu)
 - **邮箱**: corbinxu@outlook.com
 
+提交代码时请使用 **英文** 写 commit message，避免在 GitHub 上出现乱码。详见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+
 ## 许可证
 
 MIT License - 详见 LICENSE 文件
