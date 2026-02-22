@@ -2,7 +2,7 @@
 """
 ToolHub 构建脚本
 1. 使用 PyInstaller 打包 gui_app.py 为 dist/ToolHub.exe
-2. 使用 Inno Setup 打包为安装程序 dist/ToolHub-1.2-setup.exe（需已安装 Inno Setup）
+2. 使用 Inno Setup 打包为安装程序 dist/ToolHub-1.3.exe（需已安装 Inno Setup）
 """
 import subprocess
 import sys
