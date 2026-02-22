@@ -5,8 +5,19 @@
 
 import sys
 import os
+import pathlib
 import warnings
 from typing import Dict
+
+
+def _app_base_dir():
+    """安装包运行时以 exe 所在目录为基准；开发时为 gui_app.py 所在目录。单文件 exe 若旁无 templates 则用 _MEIPASS。"""
+    if getattr(sys, "frozen", False):
+        exe_dir = pathlib.Path(sys.executable).resolve().parent
+        if (exe_dir / "templates").exists():
+            return exe_dir
+        return pathlib.Path(sys._MEIPASS)
+    return pathlib.Path(__file__).resolve().parent
 
 # 禁用 PyQt5 的 DeprecationWarning
 warnings.filterwarnings('ignore', category=DeprecationWarning)
@@ -19,11 +30,16 @@ from PyQt5.QtWidgets import (
     QSpacerItem, QSizePolicy, QStackedWidget, QLineEdit, QButtonGroup, QInputDialog, QCheckBox,
     QScrollArea, QGroupBox
 )
-from PyQt5.QtCore import Qt, QThread, pyqtSignal, QSize
+from PyQt5.QtCore import Qt, QThread, pyqtSignal, QSize, QTimer
 from PyQt5.QtGui import QFont, QColor, QIcon, QPixmap, QPainter
 from main.common.config import ConfigManager
+import webbrowser
 from main.label.label_generator import LabelGenerator
-from main.label.carton_mark_generator import CartonMarkGenerator, ShantouBCartonMarkGenerator
+from main.label.carton_mark_generator import (
+    CartonMarkGenerator,
+    ShantouBCartonMarkGenerator,
+    ShantouBValidationError,
+)
 
 
 
@@ -65,6 +81,53 @@ class ExportThread(QThread):
             self.error.emit(f"导出失败: {str(e)}")
         finally:
             self.finished.emit()
+
+
+class UpdateCheckThread(QThread):
+    """后台检测更新线程，完成后发出 result 信号 (latest_version, release_url) 或 (None, None)"""
+    result = pyqtSignal(object, object)
+
+    def __init__(self):
+        super().__init__()
+
+    def run(self):
+        latest_version = None
+        release_url = None
+        try:
+            import urllib.request
+            import json
+            import ssl
+            github_api_url = "https://api.github.com/repos/corbin-xu/ToolHub/releases/latest"
+            ssl_context = ssl.create_default_context()
+            ssl_context.check_hostname = False
+            ssl_context.verify_mode = ssl.CERT_NONE
+            request = urllib.request.Request(github_api_url)
+            request.add_header('User-Agent', 'ToolHub/1.3')
+            with urllib.request.urlopen(request, context=ssl_context, timeout=10) as response:
+                data = json.loads(response.read().decode())
+                latest_version = data.get('tag_name', '').lstrip('v')
+                release_url = data.get('html_url', '') or ('https://github.com/corbin-xu/ToolHub/releases')
+        except Exception:
+            pass
+        self.result.emit(latest_version, release_url)
+
+
+def show_new_version_dialog(parent, current_version, latest_version, release_url, config_manager):
+    """显示发现新版本对话框：前往下载 / 忽略该版本。若用户选择忽略则写入 config 并保存。"""
+    msg = QMessageBox(parent)
+    msg.setWindowTitle("有新版本")
+    msg.setText(f"发现新版本: {latest_version}\n当前版本: {current_version}\n\n是否前往下载？")
+    go_btn = msg.addButton("前往下载", QMessageBox.AcceptRole)
+    ignore_btn = msg.addButton("忽略该版本", QMessageBox.RejectRole)
+    msg.exec_()
+    if msg.clickedButton() == go_btn and release_url:
+        webbrowser.open(release_url)
+    elif msg.clickedButton() == ignore_btn and config_manager is not None:
+        ignored = list(config_manager.get('ignored_versions', []))
+        if latest_version not in ignored:
+            ignored.append(latest_version)
+            config_manager.set('ignored_versions', ignored)
+            config_manager.save_config()
 
 
 class PropellerFilenameDialog(QDialog):
@@ -207,13 +270,13 @@ class KeywordAnalyzerGUI(QMainWindow):
         self.last_file_path = self.config_manager.get('last_csv_path', os.path.expanduser('~/Desktop'))
         
         # 应用版本和导出路径
-        self.app_version = "1.2"
+        self.app_version = "1.3"
         self.export_path = self.config_manager.get('export_path', os.path.expanduser('~/Desktop'))
-        
-        # 检测更新
-        self.check_for_updates()
-        
+
         self.init_ui()
+
+        # 启动后延迟自动检查更新（不阻塞界面）
+        QTimer.singleShot(1500, self.run_startup_update_check)
     
     def init_ui(self):
         """初始化 UI"""
@@ -282,7 +345,7 @@ class KeywordAnalyzerGUI(QMainWindow):
     
     def show_app_settings(self):
         """显示应用设置对话框"""
-        dialog = AppSettingsDialog(self, self.app_version, self.export_path)
+        dialog = AppSettingsDialog(self, self.app_version, self.export_path, self.config_manager)
         dialog.exec_()
         # 对话框关闭时保存导出路径（无论是关闭还是确定）
         new_export_path = dialog.get_export_path()
@@ -291,79 +354,23 @@ class KeywordAnalyzerGUI(QMainWindow):
             self.config_manager.set('export_path', self.export_path)
             self.config_manager.save_config()
     
-    def check_for_updates(self):
-        """检测更新（从GitHub）"""
-        try:
-            import urllib.request
-            import json
-            import ssl
-            
-            # GitHub API URL
-            github_api_url = "https://api.github.com/repos/corbin-xu/ToolHub/releases/latest"
-            
-            print("[DEBUG] ========== 开始检测更新 ==========")
-            print(f"[DEBUG] 当前版本: {self.app_version}")
-            print(f"[DEBUG] API URL: {github_api_url}")
-            
-            try:
-                print("[DEBUG] 正在创建 SSL 上下文...")
-                # 创建 SSL 上下文，禁用证书验证（用于 PyInstaller 打包的应用）
-                ssl_context = ssl.create_default_context()
-                ssl_context.check_hostname = False
-                ssl_context.verify_mode = ssl.CERT_NONE
-                print("[DEBUG] SSL 上下文创建成功")
-                
-                print("[DEBUG] 正在创建请求...")
-                request = urllib.request.Request(github_api_url)
-                request.add_header('User-Agent', 'ToolHub/1.2')
-                print("[DEBUG] 请求创建成功")
-                
-                print("[DEBUG] 正在连接到 GitHub API...")
-                with urllib.request.urlopen(request, context=ssl_context, timeout=10) as response:
-                    print(f"[DEBUG] 连接成功！状态码: {response.status}")
-                    print("[DEBUG] 正在读取响应数据...")
-                    response_data = response.read().decode()
-                    print(f"[DEBUG] 响应数据长度: {len(response_data)} 字节")
-                    
-                    data = json.loads(response_data)
-                    latest_version = data.get('tag_name', 'unknown').lstrip('v')
-                    print(f"[DEBUG] 最新版本: {latest_version}")
-                    
-                    if latest_version > self.app_version:
-                        print(f"[INFO] 发现新版本: {latest_version}，当前版本: {self.app_version}")
-                    else:
-                        print(f"[INFO] 已是最新版本")
-                        
-            except urllib.error.URLError as e:
-                print(f"[ERROR] URLError 异常!")
-                print(f"[ERROR] 错误信息: {e}")
-                print(f"[ERROR] 错误原因: {e.reason if hasattr(e, 'reason') else '未知'}")
-                import traceback
-                traceback.print_exc()
-                    
-            except urllib.error.HTTPError as e:
-                print(f"[ERROR] HTTPError 异常!")
-                print(f"[ERROR] HTTP 状态码: {e.code}")
-                print(f"[ERROR] 错误信息: {e.reason}")
-                
-            except json.JSONDecodeError as e:
-                print(f"[ERROR] JSON 解析异常!")
-                print(f"[ERROR] 错误信息: {e}")
-                
-            except Exception as e:
-                print(f"[ERROR] 未知异常!")
-                print(f"[ERROR] 异常类型: {type(e).__name__}")
-                print(f"[ERROR] 错误信息: {str(e)}")
-                import traceback
-                traceback.print_exc()
-                
-            print("[DEBUG] ========== 检测更新完成 ==========")
-        
-        except Exception as e:
-            print(f"[ERROR] 外层异常: {str(e)}")
-            import traceback
-            traceback.print_exc()
-    
+    def run_startup_update_check(self):
+        """启动后自动检查更新：在后台线程请求，若有新版本且未忽略则弹窗。"""
+        self._update_thread = UpdateCheckThread()
+        self._update_thread.result.connect(self._on_startup_update_result)
+        self._update_thread.start()
+
+    def _on_startup_update_result(self, latest_version, release_url):
+        if not latest_version or not release_url:
+            return
+        ignored = self.config_manager.get('ignored_versions', [])
+        if latest_version in ignored:
+            return
+        if latest_version > self.app_version:
+            show_new_version_dialog(
+                self, self.app_version, latest_version, release_url, self.config_manager
+            )
+
     def on_sn_prefix_changed(self, prefix):
         """品牌前缀改变时的处理"""
         # 年份下拉栏始终显示 2025/2026
@@ -1574,7 +1581,7 @@ class KeywordAnalyzerGUI(QMainWindow):
             new_propeller_mappings = {}  # 追踪新添加的映射
             
             # 获取 default 模板路径
-            gui_dir = pathlib.Path(__file__).resolve().parent
+            gui_dir = _app_base_dir()
             default_templates = {
                 "label_12": gui_dir / "templates" / "label_12.pld",
                 "label_13": gui_dir / "templates" / "label_13.pld",
@@ -2140,15 +2147,17 @@ class KeywordAnalyzerGUI(QMainWindow):
                 #  B列: 第 row 行 -> 城市（如“汕头”）
                 #  C列: row+1 行 -> 供应商
                 #       row+2 行 -> 入库库房
-                #       row+3 行 -> 需求单号
-                #       row+4 行 -> 产品规格
+                #       row+3 行 -> EPL采购单号（EPL+13位）
+                #       row+4 行 -> 需求单号（PR+7位）
+                #       row+5 行 -> 产品规格
                 city_cell = ws.cell(row, 2)  # 城市在第2列（B列）
                 supplier_cell = ws.cell(row + 1, 3)
                 inbound_wh_cell = ws.cell(row + 2, 3)
-                demand_no_cell = ws.cell(row + 3, 3)
-                spec_cell = ws.cell(row + 4, 3)
+                epl_purchase_no_cell = ws.cell(row + 3, 3)
+                demand_no_cell = ws.cell(row + 4, 3)
+                spec_cell = ws.cell(row + 5, 3)
 
-                cells = [city_cell, supplier_cell, inbound_wh_cell, demand_no_cell, spec_cell]
+                cells = [city_cell, supplier_cell, inbound_wh_cell, spec_cell]
                 if any(c is None or c.value is None or str(c.value).strip() == "" for c in cells):
                     skipped_rows.append(f"序号{seq_num}(必填项缺失)")
                     continue
@@ -2156,27 +2165,45 @@ class KeywordAnalyzerGUI(QMainWindow):
                 city = str(city_cell.value).strip()
                 supplier = str(supplier_cell.value).strip()
                 inbound_warehouse = str(inbound_wh_cell.value).strip()
-                demand_no = str(demand_no_cell.value).strip()
+                demand_no = str(demand_no_cell.value or "").strip()
                 product_spec = str(spec_cell.value).strip()
+                epl_purchase_no = str(epl_purchase_no_cell.value or "").strip()
 
-                print(
-                    f"[DEBUG] 汕头B仓 行{row}: 序号={seq_num}, 城市={city}, 供应商={supplier}, "
-                    f"入库库房={inbound_warehouse}, 需求单号={demand_no}, 产品规格={product_spec}"
-                )
+                # 为空时提示，但允许替换
+                empty_fields = []
+                if not demand_no:
+                    empty_fields.append("需求单号")
+                if not epl_purchase_no:
+                    empty_fields.append("EPL采购单号")
+                if empty_fields:
+                    QMessageBox.information(
+                        self,
+                        "字段为空",
+                        f"序号 {seq_num} 的 {', '.join(empty_fields)} 为空，将使用空值替换。",
+                    )
 
-                generator = ShantouBCartonMarkGenerator()
-                if generator.generate(
-                    seq_num=seq_num,
-                    city=city,
-                    supplier=supplier,
-                    inbound_warehouse=inbound_warehouse,
-                    demand_no=demand_no,
-                    product_spec=product_spec,
-                    output_dir=export_folder,
-                ):
-                    generated_count += 1
-                else:
-                    skipped_rows.append(f"序号{seq_num}(生成失败)")
+                try:
+                    generator = ShantouBCartonMarkGenerator()
+                    if generator.generate(
+                        seq_num=seq_num,
+                        city=city,
+                        supplier=supplier,
+                        inbound_warehouse=inbound_warehouse,
+                        demand_no=demand_no,
+                        epl_purchase_no=epl_purchase_no,
+                        product_spec=product_spec,
+                        output_dir=export_folder,
+                    ):
+                        generated_count += 1
+                    else:
+                        skipped_rows.append(f"序号{seq_num}(生成失败)")
+                except ShantouBValidationError as e:
+                    QMessageBox.critical(
+                        self,
+                        "格式校验失败",
+                        str(e),
+                    )
+                    skipped_rows.append(f"序号{seq_num}({e.field_name}格式错误)")
 
                 total_count += 1
 
@@ -2208,7 +2235,7 @@ class KeywordAnalyzerGUI(QMainWindow):
             propeller_mapping = self.sheet_mapping.get("螺旋桨", {})
             
             # 获取模板文件夹
-            template_dir = os.path.join(os.path.dirname(__file__), "templates", "标签模板", "螺旋桨")
+            template_dir = str(_app_base_dir() / "templates" / "标签模板" / "螺旋桨")
             
             if not os.path.exists(template_dir):
                 print(f"[DEBUG] 螺旋桨模板文件夹不存在: {template_dir}")
@@ -3086,7 +3113,7 @@ class KeywordAnalyzerGUI(QMainWindow):
             
             # 生成到templates/箱唛模板/{类型}文件夹
             import pathlib
-            gui_dir = pathlib.Path(__file__).resolve().parent
+            gui_dir = _app_base_dir()
             carton_mark_dir = gui_dir / "templates" / "箱唛模板" / box_type_folder
             carton_mark_dir.mkdir(parents=True, exist_ok=True)
             
@@ -3183,7 +3210,7 @@ class KeywordAnalyzerGUI(QMainWindow):
             try:
                 # 获取螺旋桨模板路径（使用相对路径）
                 import pathlib
-                gui_dir = pathlib.Path(__file__).resolve().parent
+                gui_dir = _app_base_dir()
                 template_path = gui_dir / "templates" / "label_propeller.pld"
                 
                 if not template_path.exists():
@@ -3301,7 +3328,7 @@ class KeywordAnalyzerGUI(QMainWindow):
         try:
             # 获取模板路径（使用相对路径）
             import pathlib
-            gui_dir = pathlib.Path(__file__).resolve().parent
+            gui_dir = _app_base_dir()
             template_path = gui_dir / "templates" / "pld_template.pld"
             
             # 如果默认模板不存在，尝试找任何 .pld 文件
@@ -3943,7 +3970,7 @@ class LabelDialog(QDialog):
                         
                         try:
                             # 获取螺旋桨模板路径
-                            gui_dir = pathlib.Path(__file__).resolve().parent
+                            gui_dir = _app_base_dir()
                             template_path = gui_dir / "templates" / "label_propeller.pld"
                             
                             if not template_path.exists():
@@ -4030,7 +4057,7 @@ class LabelDialog(QDialog):
                             sn = f"{sn_prefix}{sn_seq}{year_converted}{sn_date}{sn_batch}"
                             
                             # 获取模板路径
-                            gui_dir = pathlib.Path(__file__).resolve().parent
+                            gui_dir = _app_base_dir()
                             template_path = gui_dir / "templates" / "label_12.pld"
                             
                             if not template_path.exists():
@@ -4113,7 +4140,7 @@ class LabelDialog(QDialog):
                 
                 try:
                     # 获取螺旋桨模板路径
-                    gui_dir = pathlib.Path(__file__).resolve().parent
+                    gui_dir = _app_base_dir()
                     template_path = gui_dir / "templates" / "label_propeller.pld"
                     
                     if not template_path.exists():
@@ -4207,7 +4234,7 @@ class LabelDialog(QDialog):
                     sn = f"{sn_prefix}{sn_seq}{year_converted}{sn_date}{sn_batch}"
                     
                     # 获取模板路径
-                    gui_dir = pathlib.Path(__file__).resolve().parent
+                    gui_dir = _app_base_dir()
                     template_path = gui_dir / "templates" / "label_12.pld"
                     
                     if not template_path.exists():
@@ -4249,7 +4276,7 @@ class LabelDialog(QDialog):
                 sn = f"{sn_prefix}{sn_seq}{year_converted}{sn_date}{sn_batch}"
                 
                 # 获取模板路径
-                gui_dir = pathlib.Path(__file__).resolve().parent
+                gui_dir = _app_base_dir()
                 template_path = gui_dir / "templates" / "label_12.pld"
                 
                 if not template_path.exists():
@@ -4331,7 +4358,7 @@ class LabelDialog(QDialog):
         
         try:
             # 获取螺旋桨模板路径
-            gui_dir = pathlib.Path(__file__).resolve().parent
+            gui_dir = _app_base_dir()
             template_path = gui_dir / "templates" / "label_propeller.pld"
             
             if not template_path.exists():
@@ -4388,7 +4415,7 @@ class LabelDialog(QDialog):
         
         try:
             # 获取模板路径
-            gui_dir = pathlib.Path(__file__).resolve().parent
+            gui_dir = _app_base_dir()
             template_path = gui_dir / "templates" / "pld_template.pld"
             
             # 如果默认模板不存在，尝试找任何 label_*.pld 文件
@@ -4691,7 +4718,7 @@ class BoxDialog(QDialog):
                 box_type_folder = "玩具箱唛"
             
             # 生成到templates/箱唛模板/{类型}文件夹
-            gui_dir = pathlib.Path(__file__).resolve().parent
+            gui_dir = _app_base_dir()
             carton_mark_dir = gui_dir / "templates" / "箱唛模板" / box_type_folder
             carton_mark_dir.mkdir(parents=True, exist_ok=True)
             
@@ -5533,10 +5560,11 @@ class SettingsDialog(QDialog):
 class AppSettingsDialog(QDialog):
     """全局设置对话框"""
     
-    def __init__(self, parent=None, app_version="1.0", export_path=""):
+    def __init__(self, parent=None, app_version="1.0", export_path="", config_manager=None):
         super().__init__(parent)
         self.app_version = app_version
         self.export_path = export_path.replace('/', '\\')  # 统一转换为反斜杠
+        self.config_manager = config_manager
         self.release_date = "未知"  # 发布日期，默认为未知
         self.setWindowTitle("全局设置")
         self.setGeometry(0, 0, 380, 170)
@@ -5637,7 +5665,7 @@ class AppSettingsDialog(QDialog):
                 
                 print("[DEBUG] 正在创建请求...")
                 request = urllib.request.Request(github_api_url)
-                request.add_header('User-Agent', 'ToolHub/1.2')
+                request.add_header('User-Agent', 'ToolHub/1.3')
                 print("[DEBUG] 请求创建成功")
                 
                 print("[DEBUG] 正在连接到 GitHub API...")
@@ -5663,10 +5691,9 @@ class AppSettingsDialog(QDialog):
                     
                     if latest_version > self.app_version:
                         print(f"[INFO] 发现新版本: {latest_version}")
-                        QMessageBox.information(
-                            self, 
-                            "有新版本", 
-                            f"发现新版本: {latest_version}\n当前版本: {self.app_version}\n\n请访问 GitHub 下载最新版本"
+                        release_url = data.get('html_url', '') or 'https://github.com/corbin-xu/ToolHub/releases'
+                        show_new_version_dialog(
+                            self, self.app_version, latest_version, release_url, self.config_manager
                         )
                     else:
                         print(f"[INFO] 已是最新版本")

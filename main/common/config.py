@@ -4,13 +4,22 @@
 
 import json
 import os
+import sys
+from pathlib import Path
 from typing import Dict
+
+
+def _config_path():
+    """安装包运行时 config 与 exe 同目录；开发时为当前工作目录下的 config.json。"""
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).resolve().parent / "config.json"
+    return Path("config.json")
 
 
 class ConfigManager:
     """配置管理器"""
     
-    CONFIG_FILE = "config.json"
+    CONFIG_FILE = "config.json"  # 仅作默认名，实际路径用 _config_path()
     
     DEFAULT_CONFIG = {
         'impression_threshold': 100,      # 展现数阈值
@@ -19,6 +28,7 @@ class ConfigManager:
         'conversion_threshold': 1.0,      # 转化率阈值 (%)
         'window_width': 900,              # 窗口宽度
         'window_height': 600,             # 窗口高度
+        'ignored_versions': [],           # 用户选择“忽略该版本”的版本号列表
     }
     
     def __init__(self):
@@ -27,9 +37,10 @@ class ConfigManager:
     @staticmethod
     def load_config() -> Dict:
         """加载配置文件"""
-        if os.path.exists(ConfigManager.CONFIG_FILE):
+        path = _config_path()
+        if path.exists():
             try:
-                with open(ConfigManager.CONFIG_FILE, 'r', encoding='utf-8') as f:
+                with open(path, 'r', encoding='utf-8') as f:
                     config = json.load(f)
                     # 合并默认配置和加载的配置
                     return {**ConfigManager.DEFAULT_CONFIG, **config}
@@ -41,7 +52,7 @@ class ConfigManager:
     def save_config(self) -> bool:
         """保存配置文件"""
         try:
-            with open(ConfigManager.CONFIG_FILE, 'w', encoding='utf-8') as f:
+            with open(_config_path(), 'w', encoding='utf-8') as f:
                 json.dump(self.config, f, ensure_ascii=False, indent=2)
             return True
         except Exception as e:

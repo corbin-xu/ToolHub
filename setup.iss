@@ -1,6 +1,6 @@
 [Setup]
 AppName=ToolHub
-AppVersion=1.2
+AppVersion=1.3
 AppPublisher=corbin-xu
 AppPublisherURL=https://github.com/corbin-xu/ToolHub
 AppSupportURL=https://github.com/corbin-xu/ToolHub
@@ -10,7 +10,7 @@ DefaultGroupName=ToolHub
 AllowNoIcons=yes
 LicenseFile=LICENSE
 OutputDir=dist
-OutputBaseFilename=ToolHub-1.2-setup
+OutputBaseFilename=ToolHub-1.3-setup
 Compression=zip
 SolidCompression=yes
 PrivilegesRequired=lowest
