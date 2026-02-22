@@ -83,9 +83,32 @@ class ExportThread(QThread):
             self.finished.emit()
 
 
+def _pick_download_url_from_assets(assets, tag_name):
+    """根据当前系统从 assets 中选取直接下载链接。Windows -> .exe, macOS -> .dmg"""
+    if not assets or not isinstance(assets, list):
+        return None
+    suffix = '.exe' if sys.platform == 'win32' else '.dmg' if sys.platform == 'darwin' else None
+    if not suffix:
+        return None
+    v = tag_name.lstrip('v') if tag_name else ''
+    for a in assets:
+        name = (a.get('name') or '').lower()
+        if name.endswith(suffix) and ('toolhub' in name or 'tool hub' in name):
+            url = a.get('browser_download_url')
+            if url:
+                return url
+    # 兜底：任意匹配后缀的 asset
+    for a in assets:
+        if (a.get('name') or '').lower().endswith(suffix):
+            url = a.get('browser_download_url')
+            if url:
+                return url
+    return None
+
+
 class UpdateCheckThread(QThread):
-    """后台检测更新线程，完成后发出 result 信号 (latest_version, release_url) 或 (None, None)"""
-    result = pyqtSignal(object, object)
+    """后台检测更新线程，完成后发出 result 信号 (latest_version, release_url, direct_download_url) 或 (None, None, None)"""
+    result = pyqtSignal(object, object, object)
 
     def __init__(self):
         super().__init__()
@@ -93,6 +116,7 @@ class UpdateCheckThread(QThread):
     def run(self):
         latest_version = None
         release_url = None
+        direct_download_url = None
         try:
             import urllib.request
             import json
@@ -102,32 +126,156 @@ class UpdateCheckThread(QThread):
             ssl_context.check_hostname = False
             ssl_context.verify_mode = ssl.CERT_NONE
             request = urllib.request.Request(github_api_url)
-            request.add_header('User-Agent', 'ToolHub/1.3')
+            request.add_header('User-Agent', 'ToolHub/1.3.1')
             with urllib.request.urlopen(request, context=ssl_context, timeout=10) as response:
                 data = json.loads(response.read().decode())
                 latest_version = data.get('tag_name', '').lstrip('v')
                 release_url = data.get('html_url', '') or ('https://github.com/corbin-xu/ToolHub/releases')
+                assets = data.get('assets', [])
+                direct_download_url = _pick_download_url_from_assets(assets, data.get('tag_name', ''))
         except Exception:
             pass
-        self.result.emit(latest_version, release_url)
+        self.result.emit(latest_version, release_url, direct_download_url)
 
 
-def show_new_version_dialog(parent, current_version, latest_version, release_url, config_manager):
-    """显示发现新版本对话框：前往下载 / 忽略该版本。若用户选择忽略则写入 config 并保存。"""
+class DownloadUpdateThread(QThread):
+    """后台下载更新包，发出 progress(bytes_done, total) 和 finished(path) 或 error(msg)"""
+    progress = pyqtSignal(int, int)
+    finished_dl = pyqtSignal(str)
+    error = pyqtSignal(str)
+
+    def __init__(self, url, save_path):
+        super().__init__()
+        self.url = url
+        self.save_path = save_path
+
+    def run(self):
+        try:
+            import urllib.request
+            import ssl
+            ssl_context = ssl.create_default_context()
+            ssl_context.check_hostname = False
+            ssl_context.verify_mode = ssl.CERT_NONE
+            req = urllib.request.Request(self.url)
+            req.add_header('User-Agent', 'ToolHub/1.3.1')
+            with urllib.request.urlopen(req, context=ssl_context, timeout=30) as resp:
+                total = int(resp.headers.get('Content-Length', 0) or 0)
+                chunk_size = 65536
+                done = 0
+                with open(self.save_path, 'wb') as f:
+                    while True:
+                        chunk = resp.read(chunk_size)
+                        if not chunk:
+                            break
+                        f.write(chunk)
+                        done += len(chunk)
+                        self.progress.emit(done, total if total > 0 else done)
+                self.finished_dl.emit(self.save_path)
+        except Exception as e:
+            self.error.emit(str(e))
+
+
+def _run_windows_updater(current_exe, new_exe_path):
+    """Windows: 创建并执行更新脚本，关闭当前进程后替换 exe 并重启"""
+    import subprocess
+    import tempfile
+    bat = tempfile.NamedTemporaryFile(mode='w', suffix='.bat', delete=False)
+    try:
+        bat.write('@echo off\n')
+        bat.write('ping 127.0.0.1 -n 3 > nul\n')
+        bat.write(f'del /f /q "{current_exe}"\n')
+        bat.write(f'move /y "{new_exe_path}" "{current_exe}"\n')
+        bat.write(f'start "" "{current_exe}"\n')
+        bat.write('del "%~f0"\n')
+        bat.close()
+        flags = getattr(subprocess, 'CREATE_NO_WINDOW', 0x08000000) if sys.platform == 'win32' else 0
+        subprocess.Popen(['cmd', '/c', bat.name], creationflags=flags)
+    except Exception:
+        pass
+
+
+def show_new_version_dialog(parent, current_version, latest_version, release_url, direct_download_url, config_manager):
+    """显示发现新版本对话框：前往下载(直接链接) / 应用内下载并更新 / 忽略该版本"""
     msg = QMessageBox(parent)
     msg.setWindowTitle("有新版本")
-    msg.setText(f"发现新版本: {latest_version}\n当前版本: {current_version}\n\n是否前往下载？")
+    msg.setText(f"发现新版本: {latest_version}\n当前版本: {current_version}\n\n请选择下载方式：")
     go_btn = msg.addButton("前往下载", QMessageBox.AcceptRole)
+    inapp_btn = None
+    if direct_download_url:
+        inapp_btn = msg.addButton("应用内下载并更新", QMessageBox.AcceptRole)
     ignore_btn = msg.addButton("忽略该版本", QMessageBox.RejectRole)
     msg.exec_()
-    if msg.clickedButton() == go_btn and release_url:
-        webbrowser.open(release_url)
-    elif msg.clickedButton() == ignore_btn and config_manager is not None:
+    clicked = msg.clickedButton()
+    if clicked == go_btn:
+        url = direct_download_url if direct_download_url else release_url
+        if url:
+            webbrowser.open(url)
+    elif clicked == inapp_btn and direct_download_url:
+        _do_inapp_download_and_update(parent, direct_download_url, latest_version)
+    elif clicked == ignore_btn and config_manager is not None:
         ignored = list(config_manager.get('ignored_versions', []))
         if latest_version not in ignored:
             ignored.append(latest_version)
             config_manager.set('ignored_versions', ignored)
             config_manager.save_config()
+
+
+def _do_inapp_download_and_update(parent, download_url, version):
+    """应用内下载更新包，显示进度，完成后执行更新（Windows 自动替换 exe 并重启）"""
+    import tempfile
+    suffix = '.exe' if sys.platform == 'win32' else '.dmg'
+    fname = f"ToolHub-{version}{suffix}"
+    save_path = os.path.join(tempfile.gettempdir(), fname)
+
+    dlg = QDialog(parent)
+    dlg.setWindowTitle("下载更新")
+    dlg.setMinimumWidth(360)
+    layout = QVBoxLayout(dlg)
+    label = QLabel("正在下载...")
+    layout.addWidget(label)
+    progress = QProgressBar()
+    progress.setRange(0, 0)
+    layout.addWidget(progress)
+
+    def on_progress(done, total):
+        if total > 0:
+            progress.setRange(0, total)
+            progress.setValue(done)
+            label.setText(f"已下载: {done // 1024 // 1024} MB / {total // 1024 // 1024} MB")
+        else:
+            progress.setMaximum(0)
+            label.setText(f"已下载: {done // 1024 // 1024} MB")
+
+    def on_finished(path):
+        dlg.accept()
+        if sys.platform == 'win32' and getattr(sys, 'frozen', False):
+            current_exe = sys.executable
+            try:
+                _run_windows_updater(current_exe, path)
+                QApplication.quit()
+            except Exception as e:
+                QMessageBox.warning(parent, "更新失败", f"无法自动更新: {e}\n\n请手动运行: {path}")
+        elif sys.platform == 'darwin':
+            import subprocess
+            try:
+                subprocess.Popen(['open', path])
+            except Exception:
+                pass
+            QMessageBox.information(parent, "下载完成", f"已保存到: {path}\n请打开 DMG 并将应用拖入「应用程序」完成更新。")
+        else:
+            QMessageBox.information(parent, "下载完成", f"已保存到: {path}\n请手动安装。")
+
+    def on_error(err_msg):
+        dlg.reject()
+        QMessageBox.warning(parent, "下载失败", f"下载失败: {err_msg}")
+
+    thread = DownloadUpdateThread(download_url, save_path)
+    thread.progress.connect(on_progress)
+    thread.finished_dl.connect(on_finished)
+    thread.error.connect(on_error)
+    dlg._dl_thread = thread  # 保持引用，防止下载完成前被回收
+    thread.start()
+    dlg.exec_()
 
 
 class PropellerFilenameDialog(QDialog):
@@ -270,7 +418,7 @@ class KeywordAnalyzerGUI(QMainWindow):
         self.last_file_path = self.config_manager.get('last_csv_path', os.path.expanduser('~/Desktop'))
         
         # 应用版本和导出路径
-        self.app_version = "1.3"
+        self.app_version = "1.3.1"
         self.export_path = self.config_manager.get('export_path', os.path.expanduser('~/Desktop'))
 
         self.init_ui()
@@ -360,7 +508,7 @@ class KeywordAnalyzerGUI(QMainWindow):
         self._update_thread.result.connect(self._on_startup_update_result)
         self._update_thread.start()
 
-    def _on_startup_update_result(self, latest_version, release_url):
+    def _on_startup_update_result(self, latest_version, release_url, direct_download_url):
         if not latest_version or not release_url:
             return
         ignored = self.config_manager.get('ignored_versions', [])
@@ -368,7 +516,8 @@ class KeywordAnalyzerGUI(QMainWindow):
             return
         if latest_version > self.app_version:
             show_new_version_dialog(
-                self, self.app_version, latest_version, release_url, self.config_manager
+                self, self.app_version, latest_version, release_url,
+                direct_download_url or None, self.config_manager
             )
 
     def on_sn_prefix_changed(self, prefix):
@@ -5665,7 +5814,7 @@ class AppSettingsDialog(QDialog):
                 
                 print("[DEBUG] 正在创建请求...")
                 request = urllib.request.Request(github_api_url)
-                request.add_header('User-Agent', 'ToolHub/1.3')
+                request.add_header('User-Agent', 'ToolHub/1.3.1')
                 print("[DEBUG] 请求创建成功")
                 
                 print("[DEBUG] 正在连接到 GitHub API...")
@@ -5692,8 +5841,12 @@ class AppSettingsDialog(QDialog):
                     if latest_version > self.app_version:
                         print(f"[INFO] 发现新版本: {latest_version}")
                         release_url = data.get('html_url', '') or 'https://github.com/corbin-xu/ToolHub/releases'
+                        direct_download_url = _pick_download_url_from_assets(
+                            data.get('assets', []), data.get('tag_name', '')
+                        )
                         show_new_version_dialog(
-                            self, self.app_version, latest_version, release_url, self.config_manager
+                            self, self.app_version, latest_version, release_url,
+                            direct_download_url, self.config_manager
                         )
                     else:
                         print(f"[INFO] 已是最新版本")
