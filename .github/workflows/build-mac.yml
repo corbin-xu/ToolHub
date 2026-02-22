@@ -37,6 +37,8 @@ jobs:
       - name: Create DMG
         run: |
           cd dist
+          VERSION=${GITHUB_REF_NAME#v}
+          DMG_NAME="ToolHub-${VERSION}.dmg"
           
           # 创建临时目录用于 DMG 内容
           mkdir -p dmg_temp
@@ -44,14 +46,16 @@ jobs:
           ln -s /Applications dmg_temp/Applications
           
           # 创建 DMG
-          hdiutil create -volname "ToolHub" -srcfolder dmg_temp -ov -format UDZO ToolHub-1.2.dmg
+          hdiutil create -volname "ToolHub" -srcfolder dmg_temp -ov -format UDZO "$DMG_NAME"
           
           # 清理临时目录
           rm -rf dmg_temp
+          
+          echo "DMG_NAME=$DMG_NAME" >> $GITHUB_ENV
       
       - name: Upload to Release
         uses: softprops/action-gh-release@v1
         with:
-          files: dist/ToolHub-1.2.dmg
+          files: dist/${{ env.DMG_NAME }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
