@@ -11,11 +11,16 @@ import re
 from pathlib import Path
 
 
-def _get_app_base_dir() -> Path:
-    """应用根目录：安装包运行时为 exe 所在目录，否则为项目根目录（main/label 的上级两级）。"""
+def _templates_base_dir() -> Path:
+    """安装包/开发时：模板目录。打包 exe 时若 exe 旁无 templates 则用 PyInstaller 解压目录（_MEIPASS）。"""
     if getattr(sys, "frozen", False):
-        return Path(sys.executable).parent.resolve()
-    return Path(__file__).parent.parent.parent.resolve()
+        exe_dir = Path(sys.executable).resolve().parent
+        # 安装包或用户把 templates 放在 exe 旁时优先使用
+        if (exe_dir / "templates").exists():
+            return exe_dir
+        # 否则使用打包进 exe 的模板（单文件 exe 直接运行时）
+        return Path(sys._MEIPASS)
+    return Path(__file__).resolve().parent.parent.parent
 
 
 class CartonMarkGenerator:
@@ -382,8 +387,7 @@ class CartonMarkGenerator:
     def __init__(self, template_path: str = None):
         """初始化箱唛生成器"""
         if template_path is None:
-            base_dir = _get_app_base_dir()
-            template_path = base_dir / "templates" / "carton_mark.pld"
+            template_path = _templates_base_dir() / "templates" / "carton_mark.pld"
         
         self.template_path = str(template_path)
         self.content = None
@@ -634,7 +638,16 @@ class CartonMarkGenerator:
             import traceback
             traceback.print_exc()
             return False
-        
+
+
+class ShantouBValidationError(Exception):
+    """汕头B仓箱唛字段校验失败"""
+    def __init__(self, field_name: str, message: str, seq_num: int = 0):
+        self.field_name = field_name
+        self.message = message
+        self.seq_num = seq_num
+        super().__init__(f"序号{seq_num} {field_name}: {message}")
+
 
 class ShantouBCartonMarkGenerator:
     """
@@ -649,10 +662,12 @@ class ShantouBCartonMarkGenerator:
     动态定位并替换模板中的全角“Ｘ”占位符（不同字段长度可不相同）。
     """
 
+    DEMAND_NO_PATTERN = re.compile(r"^PR\d{7}$")
+    EPL_PURCHASE_NO_PATTERN = re.compile(r"^EPL\d{13}$")
+
     def __init__(self, template_path: str | None = None) -> None:
         if template_path is None:
-            base_dir = _get_app_base_dir()
-            template_path = base_dir / "templates" / "shantou_b_carton_mark.pld"
+            template_path = _templates_base_dir() / "templates" / "shantou_b_carton_mark.pld"
 
         self.template_path = str(template_path)
         self.content: bytearray | None = None
@@ -729,6 +744,86 @@ class ShantouBCartonMarkGenerator:
         self.content[pos_x:end] = buffer
         print(f"[DEBUG] 汕头B仓箱唛: 字段 '{label}' 替换成功")
 
+    def _replace_pr_field(self, label: str, value: str, seq_num: int) -> None:
+        """
+        替换需求单号：模板中为 PR + 7位数字（如 PR0000000）。
+        若 value 非空，必须符合 PR + 7位数字，否则抛出 ShantouBValidationError。
+        空值允许替换。
+        """
+        if self.content is None:
+            return
+        value = (value or "").strip()
+        if value and not self.DEMAND_NO_PATTERN.match(value):
+            raise ShantouBValidationError(
+                "需求单号",
+                f"格式必须为 PR+7位数字（如 PR0000000），当前为: {value}",
+                seq_num,
+            )
+        try:
+            label_bytes = label.encode("gbk")
+            pr_bytes = b"PR"
+        except Exception as e:
+            print(f"[DEBUG] 编码失败 ({label}): {e}")
+            return
+        pos_label = self.content.find(label_bytes)
+        if pos_label == -1:
+            print(f"[DEBUG] 汕头B仓箱唛: 未找到标签 '{label}'")
+            return
+        search_start = pos_label + len(label_bytes)
+        pos_pr = self.content.find(pr_bytes, search_start)
+        if pos_pr == -1:
+            print(f"[DEBUG] 汕头B仓箱唛: 未找到标签 '{label}' 后面的 PR 占位符")
+            return
+        pos_start = pos_pr  # 空值时整段替换为空格
+        end = pos_pr + 9   # PR + 7位 = 9字节
+        if end > len(self.content):
+            return
+        if value:
+            replace_bytes = (value[2:9]).encode("gbk")
+            if len(replace_bytes) != 7:
+                replace_bytes = replace_bytes[:7].ljust(7, b"0")
+            self.content[pos_pr + 2 : end] = replace_bytes
+        else:
+            self.content[pos_start:end] = b" " * 9  # 完全空：整段用空格
+        print(f"[DEBUG] 汕头B仓箱唛: 字段 '{label}' 替换成功")
+
+    def _replace_epl_field(self, label: str, value: str, seq_num: int) -> None:
+        """
+        替换 EPL采购单号：模板中为 EPL + 13位数字（如 EPL0000000000000）。
+        若 value 非空，必须符合 EPL + 13位数字，否则抛出 ShantouBValidationError。
+        空值允许替换。
+        """
+        if self.content is None:
+            return
+        value = (value or "").strip()
+        if value and not self.EPL_PURCHASE_NO_PATTERN.match(value):
+            raise ShantouBValidationError(
+                "EPL采购单号",
+                f"格式必须为 EPL+13位数字（如 EPL0000000000000），当前为: {value}",
+                seq_num,
+            )
+        epl_bytes = b"EPL"
+        pos_epl = 0
+        while True:
+            pos_epl = self.content.find(epl_bytes, pos_epl)
+            if pos_epl == -1:
+                print(f"[DEBUG] 汕头B仓箱唛: 未找到 EPL+13位 占位符")
+                return
+            pos_digits = pos_epl + 3
+            end = pos_epl + 16  # EPL + 13位 = 16字节
+            if end <= len(self.content):
+                chunk = bytes(self.content[pos_digits:pos_epl + 16])
+                if chunk.isdigit() and len(chunk) == 13:
+                    if value:
+                        replace_bytes = (value[3:16]).encode("gbk")
+                        replace_bytes = (replace_bytes[:13].ljust(13, b"0"))[:13]
+                        self.content[pos_digits:end] = replace_bytes
+                    else:
+                        self.content[pos_epl:end] = b" " * 16  # 完全空：整段用空格
+                    print(f"[DEBUG] 汕头B仓箱唛: 字段 '{label}' 替换成功")
+                    return
+            pos_epl += 1
+
     def generate(
         self,
         seq_num: int,
@@ -736,6 +831,7 @@ class ShantouBCartonMarkGenerator:
         supplier: str,
         inbound_warehouse: str,
         demand_no: str,
+        epl_purchase_no: str,
         product_spec: str,
         output_dir: str | None = None,
     ) -> bool:
@@ -747,7 +843,8 @@ class ShantouBCartonMarkGenerator:
             city: 城市名称（例如“汕头”）
             supplier: 供应商名称
             inbound_warehouse: 入库库房（全称）
-            demand_no: 需求单号
+            demand_no: 需求单号（PR+7位数字）
+            epl_purchase_no: EPL采购单号（EPL+13位数字）
             product_spec: 产品规格
             output_dir: 输出目录
         """
@@ -762,10 +859,11 @@ class ShantouBCartonMarkGenerator:
         output_filename = f"{seq_num}.汕头B仓箱唛.pld"
         output_path = os.path.join(output_dir, output_filename)
 
-        # 替换字段
+        # 替换字段（需求单号、EPL采购单号会校验格式，非空时位数必须一致）
         self._replace_field_by_label("供应商", supplier)
         self._replace_field_by_label("入库库房", inbound_warehouse)
-        self._replace_field_by_label("需求单号", demand_no)
+        self._replace_pr_field("需求单号", demand_no, seq_num)
+        self._replace_epl_field("EPL采购单号", epl_purchase_no, seq_num)
         self._replace_field_by_label("产品规格", product_spec)
 
         try:
