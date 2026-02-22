@@ -126,7 +126,7 @@ class UpdateCheckThread(QThread):
             ssl_context.check_hostname = False
             ssl_context.verify_mode = ssl.CERT_NONE
             request = urllib.request.Request(github_api_url)
-            request.add_header('User-Agent', 'ToolHub/1.3.1')
+            request.add_header('User-Agent', 'ToolHub/1.3')
             with urllib.request.urlopen(request, context=ssl_context, timeout=10) as response:
                 data = json.loads(response.read().decode())
                 latest_version = data.get('tag_name', '').lstrip('v')
@@ -157,7 +157,7 @@ class DownloadUpdateThread(QThread):
             ssl_context.check_hostname = False
             ssl_context.verify_mode = ssl.CERT_NONE
             req = urllib.request.Request(self.url)
-            req.add_header('User-Agent', 'ToolHub/1.3.1')
+            req.add_header('User-Agent', 'ToolHub/1.3')
             with urllib.request.urlopen(req, context=ssl_context, timeout=30) as resp:
                 total = int(resp.headers.get('Content-Length', 0) or 0)
                 chunk_size = 65536
@@ -418,7 +418,7 @@ class KeywordAnalyzerGUI(QMainWindow):
         self.last_file_path = self.config_manager.get('last_csv_path', os.path.expanduser('~/Desktop'))
         
         # 应用版本和导出路径
-        self.app_version = "1.3.1"
+        self.app_version = "1.3"
         self.export_path = self.config_manager.get('export_path', os.path.expanduser('~/Desktop'))
 
         self.init_ui()
@@ -1210,12 +1210,12 @@ class KeywordAnalyzerGUI(QMainWindow):
             QMessageBox.warning(self, "警告", "需要安装openpyxl库。请运行: pip install openpyxl")
             return
         
-        # 选择保存位置
-        file_path, _ = QFileDialog.getSaveFileName(
+        # 选择保存位置（用 save_path 避免被循环变量覆盖）
+        save_path, _ = QFileDialog.getSaveFileName(
             self, "保存表格", "", "Excel文件 (*.xlsx);;所有文件 (*)"
         )
         
-        if not file_path:
+        if not save_path:
             return
         
         try:
@@ -1230,9 +1230,9 @@ class KeywordAnalyzerGUI(QMainWindow):
             
             # 写入数据
             import os
-            for idx, file_path in enumerate(self.video_files_list, start=2):
-                folder_name = os.path.basename(os.path.dirname(file_path))
-                video_name = os.path.splitext(os.path.basename(file_path))[0]
+            for idx, video_file_path in enumerate(self.video_files_list, start=2):
+                folder_name = os.path.basename(os.path.dirname(video_file_path))
+                video_name = os.path.splitext(os.path.basename(video_file_path))[0]
                 
                 worksheet[f'A{idx}'] = folder_name
                 worksheet[f'B{idx}'] = video_name
@@ -1241,10 +1241,10 @@ class KeywordAnalyzerGUI(QMainWindow):
             worksheet.column_dimensions['A'].width = 20
             worksheet.column_dimensions['B'].width = 30
             
-            # 保存文件
-            workbook.save(file_path)
+            # 保存到用户选择的路径
+            workbook.save(save_path)
             
-            QMessageBox.information(self, "成功", f"表格已导出到: {file_path}")
+            QMessageBox.information(self, "成功", f"表格已导出到: {save_path}")
         
         except Exception as e:
             QMessageBox.critical(self, "错误", f"导出表格失败: {str(e)}")
@@ -5814,7 +5814,7 @@ class AppSettingsDialog(QDialog):
                 
                 print("[DEBUG] 正在创建请求...")
                 request = urllib.request.Request(github_api_url)
-                request.add_header('User-Agent', 'ToolHub/1.3.1')
+                request.add_header('User-Agent', 'ToolHub/1.3')
                 print("[DEBUG] 请求创建成功")
                 
                 print("[DEBUG] 正在连接到 GitHub API...")
