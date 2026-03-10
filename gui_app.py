@@ -106,6 +106,37 @@ def _pick_download_url_from_assets(assets, tag_name):
     return None
 
 
+def resolve_sheet_name(workbook, desired_name: str):
+    """
+    在工作簿中寻找与 desired_name 对应的实际工作表名。
+    支持精确匹配、去空格大小写匹配以及子串匹配，提高对用户 Excel 表名微小差异的容错能力。
+
+    返回匹配到的工作表名（workspace 中实际存在的名称），找不到则返回 None。
+    """
+    if not desired_name:
+        return None
+
+    # 精确匹配
+    if desired_name in workbook.sheetnames:
+        return desired_name
+
+    normalized = lambda s: ''.join(str(s).split()).lower()
+    target_norm = normalized(desired_name)
+
+    # 严格等于（忽略空格与大小写）
+    for name in workbook.sheetnames:
+        if normalized(name) == target_norm:
+            return name
+
+    # 子串匹配（目标在名称内或名称在目标内）
+    for name in workbook.sheetnames:
+        n = name.lower()
+        if target_norm in n.replace(' ', '') or n.replace(' ', '') in target_norm:
+            return name
+
+    return None
+
+
 class UpdateCheckThread(QThread):
     """后台检测更新线程，完成后发出 result 信号 (latest_version, release_url, direct_download_url) 或 (None, None, None)"""
     result = pyqtSignal(object, object, object)
@@ -1770,10 +1801,11 @@ class KeywordAnalyzerGUI(QMainWindow):
             
             for brand, sheets in scan_brands.items():
                 for sheet_name in sheets:
-                    if sheet_name not in self.current_excel_workbook.sheetnames:
+                    resolved = resolve_sheet_name(self.current_excel_workbook, sheet_name)
+                    if not resolved:
                         continue
-                    
-                    ws = self.current_excel_workbook[sheet_name]
+
+                    ws = self.current_excel_workbook[resolved]
                     for row in range(2, ws.max_row + 1):
                         sku = str(ws.cell(row, 1).value or "").strip()
                         code69 = str(ws.cell(row, 3).value or "").strip()
@@ -1816,12 +1848,14 @@ class KeywordAnalyzerGUI(QMainWindow):
             print(f"[DEBUG] 开始遍历品牌...")
             for brand, sheets in brands.items():
                 print(f"[DEBUG] 处理品牌: {brand}, sheets: {sheets}")
-                
+
                 for sheet_name in sheets:
-                    if sheet_name not in self.current_excel_workbook.sheetnames:
-                        print(f"[DEBUG] 工作表不存在: {sheet_name}")
+                    resolved = resolve_sheet_name(self.current_excel_workbook, sheet_name)
+                    if not resolved:
+                        print(f"[DEBUG] 工作表未找到（跳过）: {sheet_name}")
                         continue
-                    
+                    sheet_name = resolved
+
                     ws = self.current_excel_workbook[sheet_name]
                     print(f"[DEBUG] 处理工作表: {sheet_name}")
                     
@@ -2034,18 +2068,11 @@ class KeywordAnalyzerGUI(QMainWindow):
             box_sheet_name = box_recognize_config['sheet_name']
             
             # 检查工作表是否存在
-            if box_sheet_name not in self.current_excel_workbook.sheetnames:
-                found_sheet = None
-                for name in self.current_excel_workbook.sheetnames:
-                    if name.strip() == box_sheet_name.strip():
-                        found_sheet = name
-                        break
-                
-                if not found_sheet:
-                    print(f"[DEBUG] 箱唛工作表不存在: {box_sheet_name}")
-                    return
-                
-                box_sheet_name = found_sheet
+            resolved_box = resolve_sheet_name(self.current_excel_workbook, box_sheet_name)
+            if not resolved_box:
+                print(f"[DEBUG] 箱唛工作表不存在: {box_sheet_name}")
+                return
+            box_sheet_name = resolved_box
             
             ws = self.current_excel_workbook[box_sheet_name]
             
@@ -2619,10 +2646,11 @@ class KeywordAnalyzerGUI(QMainWindow):
             
             for brand, sheets in brands.items():
                 for sheet_name in sheets:
-                    if sheet_name not in self.current_excel_workbook.sheetnames:
+                    resolved = resolve_sheet_name(self.current_excel_workbook, sheet_name)
+                    if not resolved:
                         continue
-                    
-                    ws_source = self.current_excel_workbook[sheet_name]
+
+                    ws_source = self.current_excel_workbook[resolved]
                     
                     # 从第1行查找城市列（从编号列往右查找）
                     # 假设编号在E列
@@ -2667,10 +2695,11 @@ class KeywordAnalyzerGUI(QMainWindow):
             
             for brand, sheets in brands.items():
                 for sheet_name in sheets:
-                    if sheet_name not in self.current_excel_workbook.sheetnames:
+                    resolved = resolve_sheet_name(self.current_excel_workbook, sheet_name)
+                    if not resolved:
                         continue
-                    
-                    ws_source = self.current_excel_workbook[sheet_name]
+
+                    ws_source = self.current_excel_workbook[resolved]
                     
                     # 从第2行开始读取数据
                     for row in range(2, ws_source.max_row + 1):
