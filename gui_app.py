@@ -157,7 +157,7 @@ class UpdateCheckThread(QThread):
             ssl_context.check_hostname = False
             ssl_context.verify_mode = ssl.CERT_NONE
             request = urllib.request.Request(github_api_url)
-            request.add_header('User-Agent', 'ToolHub/1.3')
+            request.add_header('User-Agent', 'ToolHub/1.4')
             with urllib.request.urlopen(request, context=ssl_context, timeout=10) as response:
                 data = json.loads(response.read().decode())
                 latest_version = data.get('tag_name', '').lstrip('v')
@@ -188,7 +188,7 @@ class DownloadUpdateThread(QThread):
             ssl_context.check_hostname = False
             ssl_context.verify_mode = ssl.CERT_NONE
             req = urllib.request.Request(self.url)
-            req.add_header('User-Agent', 'ToolHub/1.3')
+            req.add_header('User-Agent', 'ToolHub/1.4')
             with urllib.request.urlopen(req, context=ssl_context, timeout=30) as resp:
                 total = int(resp.headers.get('Content-Length', 0) or 0)
                 chunk_size = 65536
@@ -449,7 +449,7 @@ class KeywordAnalyzerGUI(QMainWindow):
         self.last_file_path = self.config_manager.get('last_csv_path', os.path.expanduser('~/Desktop'))
         
         # 应用版本和导出路径
-        self.app_version = "1.3"
+        self.app_version = "1.4"
         self.export_path = self.config_manager.get('export_path', os.path.expanduser('~/Desktop'))
 
         self.init_ui()
@@ -2122,7 +2122,7 @@ class KeywordAnalyzerGUI(QMainWindow):
                     continue
                 
                 po_number = values[row + 2]
-                if not re.match(r'^\d{10}$', po_number):
+                if not CartonMarkGenerator.is_valid_po_num(po_number):
                     continue
                 
                 city = values[row]
@@ -2222,8 +2222,8 @@ class KeywordAnalyzerGUI(QMainWindow):
                     continue
                 
                 po_number = values[row + 2]
-                if not re.match(r'^\d{10}$', po_number):
-                    print(f"[DEBUG] 行{row}: 采购单号'{po_number}'不是10位数字，跳过")
+                if not CartonMarkGenerator.is_valid_po_num(po_number):
+                    print(f"[DEBUG] 行{row}: 采购单号'{po_number}'不是10位或12位数字，跳过")
                     skipped_rows.append(f"序号{seq_num}(采购单号格式错误)")
                     continue
                 
@@ -3270,8 +3270,8 @@ class KeywordAnalyzerGUI(QMainWindow):
             return
         
         # 验证采购单号
-        if not po_num.isdigit() or len(po_num) != 10:
-            QMessageBox.warning(self, "警告", "采购单号必须是10位数字")
+        if not CartonMarkGenerator.is_valid_po_num(po_num):
+            QMessageBox.warning(self, "警告", "采购单号必须是10位或12位数字")
             return
         
         # 验证批次
@@ -4757,8 +4757,8 @@ class BoxDialog(QDialog):
         # 采购单号
         box_form_layout.addWidget(QLabel("采购单号:"), 1, 0)
         self.box_po_input = QLineEdit()
-        self.box_po_input.setPlaceholderText("10位数字")
-        self.box_po_input.setMaxLength(10)
+        self.box_po_input.setPlaceholderText("10位或12位数字")
+        self.box_po_input.setMaxLength(12)
         box_form_layout.addWidget(self.box_po_input, 1, 1)
         
         # 目的仓
@@ -4877,8 +4877,8 @@ class BoxDialog(QDialog):
             return None
         
         # 验证采购单号
-        if not po_num.isdigit() or len(po_num) != 10:
-            QMessageBox.warning(self, "警告", "采购单号必须是10位数字")
+        if not CartonMarkGenerator.is_valid_po_num(po_num):
+            QMessageBox.warning(self, "警告", "采购单号必须是10位或12位数字")
             return None
         
         # 验证批次
@@ -5843,7 +5843,7 @@ class AppSettingsDialog(QDialog):
                 
                 print("[DEBUG] 正在创建请求...")
                 request = urllib.request.Request(github_api_url)
-                request.add_header('User-Agent', 'ToolHub/1.3')
+                request.add_header('User-Agent', 'ToolHub/1.4')
                 print("[DEBUG] 请求创建成功")
                 
                 print("[DEBUG] 正在连接到 GitHub API...")
