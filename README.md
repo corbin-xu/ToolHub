@@ -25,7 +25,7 @@
 
 1. 克隆仓库：
 ```bash
-git clone https://github.com/corbin-xu/JD Supplier Label Generator.git
+git clone https://github.com/xgb819/jd-supplier-label-generator.git
 cd JD Supplier Label Generator
 ```
 
@@ -67,8 +67,8 @@ python gui_app.py
 
 ## 开发者
 
-- **GitHub**: [corbin-xu](https://github.com/corbin-xu)
-- **邮箱**: corbinxu@outlook.com
+- **GitHub**: [xgb819](https://github.com/xgb819)
+- **邮箱**: xgb819@gmail.com
 
 提交代码时请使用 **英文** 写 commit message，避免在 GitHub 上出现乱码。详见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 

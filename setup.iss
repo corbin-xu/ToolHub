@@ -1,10 +1,10 @@
 [Setup]
 AppName=JD Supplier Label Generator
 AppVersion=1.0.4
-AppPublisher=corbin-xu
-AppPublisherURL=https://github.com/corbin-xu/JD Supplier Label Generator
-AppSupportURL=https://github.com/corbin-xu/JD Supplier Label Generator
-AppUpdatesURL=https://github.com/corbin-xu/JD Supplier Label Generator
+AppPublisher=xgb819
+AppPublisherURL=https://github.com/xgb819/jd-supplier-label-generator
+AppSupportURL=https://github.com/xgb819/jd-supplier-label-generator
+AppUpdatesURL=https://github.com/xgb819/jd-supplier-label-generator
 DefaultDirName={autopf}\JD Supplier Label Generator
 DefaultGroupName=JD Supplier Label Generator
 AllowNoIcons=yes
