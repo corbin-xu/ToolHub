@@ -152,7 +152,7 @@ class UpdateCheckThread(QThread):
             import urllib.request
             import json
             import ssl
-            github_api_url = "https://api.github.com/repos/corbin-xu/ToolHub/releases/latest"
+            github_api_url = "https://api.github.com/repos/xgb819/ToolHub/releases/latest"
             ssl_context = ssl.create_default_context()
             ssl_context.check_hostname = False
             ssl_context.verify_mode = ssl.CERT_NONE
@@ -161,7 +161,7 @@ class UpdateCheckThread(QThread):
             with urllib.request.urlopen(request, context=ssl_context, timeout=10) as response:
                 data = json.loads(response.read().decode())
                 latest_version = data.get('tag_name', '').lstrip('v')
-                release_url = data.get('html_url', '') or ('https://github.com/corbin-xu/ToolHub/releases')
+                release_url = data.get('html_url', '') or ('https://github.com/xgb819/ToolHub/releases')
                 assets = data.get('assets', [])
                 direct_download_url = _pick_download_url_from_assets(assets, data.get('tag_name', ''))
         except Exception:
@@ -5828,7 +5828,7 @@ class AppSettingsDialog(QDialog):
             from datetime import datetime
             
             # GitHub API URL
-            github_api_url = "https://api.github.com/repos/corbin-xu/ToolHub/releases/latest"
+            github_api_url = "https://api.github.com/repos/xgb819/ToolHub/releases/latest"
             
             print("[DEBUG] ========== 开始检测更新（设置窗口） ==========")
             print(f"[DEBUG] 当前版本: {self.app_version}")
@@ -5869,7 +5869,7 @@ class AppSettingsDialog(QDialog):
                     
                     if latest_version > self.app_version:
                         print(f"[INFO] 发现新版本: {latest_version}")
-                        release_url = data.get('html_url', '') or 'https://github.com/corbin-xu/ToolHub/releases'
+                        release_url = data.get('html_url', '') or 'https://github.com/xgb819/ToolHub/releases'
                         direct_download_url = _pick_download_url_from_assets(
                             data.get('assets', []), data.get('tag_name', '')
                         )

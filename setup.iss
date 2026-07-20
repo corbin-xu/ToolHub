@@ -1,10 +1,10 @@
 [Setup]
 AppName=ToolHub
 AppVersion=1.4
-AppPublisher=corbin-xu
-AppPublisherURL=https://github.com/corbin-xu/ToolHub
-AppSupportURL=https://github.com/corbin-xu/ToolHub
-AppUpdatesURL=https://github.com/corbin-xu/ToolHub
+AppPublisher=xgb819
+AppPublisherURL=https://github.com/xgb819/ToolHub
+AppSupportURL=https://github.com/xgb819/ToolHub
+AppUpdatesURL=https://github.com/xgb819/ToolHub
 DefaultDirName={autopf}\ToolHub
 DefaultGroupName=ToolHub
 AllowNoIcons=yes
