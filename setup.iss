@@ -1,6 +1,6 @@
 [Setup]
 AppName=JD Supplier Label Generator
-AppVersion=1.0.3
+AppVersion=1.0.4
 AppPublisher=corbin-xu
 AppPublisherURL=https://github.com/corbin-xu/JD Supplier Label Generator
 AppSupportURL=https://github.com/corbin-xu/JD Supplier Label Generator
@@ -10,7 +10,7 @@ DefaultGroupName=JD Supplier Label Generator
 AllowNoIcons=yes
 LicenseFile=LICENSE
 OutputDir=dist
-OutputBaseFilename=jd-supplier-label-generator-1.0.3
+OutputBaseFilename=jd-supplier-label-generator-1.0.4
 Compression=zip
 SolidCompression=yes
 PrivilegesRequired=lowest

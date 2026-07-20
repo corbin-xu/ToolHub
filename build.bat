@@ -34,5 +34,5 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo [build] 完成。安装包: dist\jd-supplier-label-generator-1.3.exe
+echo [build] 完成。安装包: dist\jd-supplier-label-generator-1.4.exe
 exit /b 0

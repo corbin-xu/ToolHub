@@ -25,6 +25,11 @@ def _templates_base_dir() -> Path:
 
 class CartonMarkGenerator:
     """箱唛生成器"""
+
+    PO_TEMPLATE_NAMES = {
+        10: "carton_mark_10.pld",
+        12: "carton_mark_12.pld",
+    }
     
     # 城市映射
     CITY_OPTIONS = {
@@ -386,11 +391,33 @@ class CartonMarkGenerator:
     
     def __init__(self, template_path: str = None):
         """初始化箱唛生成器"""
+        self._use_po_template = template_path is None
         if template_path is None:
-            template_path = _templates_base_dir() / "templates" / "carton_mark.pld"
-        
+            template_path = _templates_base_dir() / "templates" / self.PO_TEMPLATE_NAMES[10]
         self.template_path = str(template_path)
         self.content = None
+
+    @classmethod
+    def is_valid_po_num(cls, po_num: str) -> bool:
+        """采购单号只允许10位或12位半角数字。"""
+        return (
+            isinstance(po_num, str)
+            and po_num.isascii()
+            and po_num.isdigit()
+            and len(po_num) in cls.PO_TEMPLATE_NAMES
+        )
+
+    def load_template_for_po(self, po_num: str) -> bool:
+        """根据采购单号位数选择并加载对应的箱唛模板。"""
+        if not self.is_valid_po_num(po_num):
+            print(f"错误: 采购单号必须是10位或12位数字，当前为: {po_num}")
+            return False
+
+        if self._use_po_template:
+            template_name = self.PO_TEMPLATE_NAMES[len(po_num)]
+            self.template_path = str(_templates_base_dir() / "templates" / template_name)
+
+        return self.load_template()
 
     @staticmethod
     def _format_destination_city(city_full: str, city_label: str, city_raw: str = None) -> str:
@@ -473,7 +500,7 @@ class CartonMarkGenerator:
         生成箱唛文件
         
         Args:
-            po_num: 采购单号（10位）
+            po_num: 采购单号（10位或12位）
             warehouse: 目的仓
             city_code: 城市代码（1-8）
             vendor_name: 商家名称
@@ -482,8 +509,10 @@ class CartonMarkGenerator:
         Returns:
             是否生成成功
         """
-        if not self.load_template():
+        if not self.load_template_for_po(po_num):
             return False
+
+        po_length = len(po_num)
         
         # 验证城市代码
         if city_code not in self.CITY_OPTIONS:
@@ -515,7 +544,7 @@ class CartonMarkGenerator:
         
         # 字段配置
         FIELD_CONFIG = [
-            {"name": "采购单号", "old": "0000000000", "val": po_num, "len": 10},
+            {"name": "采购单号", "old": "0" * po_length, "val": po_num, "len": po_length},
             {"name": "目的城市", "old": "ＸＸＸＸＸＸＸＸＸＸＸＸＸＸＸＸ", "val": selected_city, "len": 32},
             {"name": "目的仓", "old": "ＸＸＸＸＸＸＸＸＸＸＸＸＸＸＸＸＸ", "val": warehouse, "len": 34},
             {"name": "商家名称", "old": "ＸＸＸＸＸＸＸＸＸＸＸＸＸＸＸ", "val": vendor_name, "len": 30}
@@ -565,7 +594,7 @@ class CartonMarkGenerator:
         生成箱唛文件到指定路径
         
         Args:
-            po_num: 采购单号（10位）
+            po_num: 采购单号（10位或12位）
             warehouse: 目的仓
             city_code: 城市代码（1-8）
             vendor_name: 商家名称
@@ -574,8 +603,10 @@ class CartonMarkGenerator:
         Returns:
             是否生成成功
         """
-        if not self.load_template():
+        if not self.load_template_for_po(po_num):
             return False
+
+        po_length = len(po_num)
         
         # 支持两种情况：
         # 1）city_code 在预设 CITY_OPTIONS 中（老城市）；
@@ -595,7 +626,7 @@ class CartonMarkGenerator:
         
         # 字段配置
         FIELD_CONFIG = [
-            {"name": "采购单号", "old": "0000000000", "val": po_num, "len": 10},
+            {"name": "采购单号", "old": "0" * po_length, "val": po_num, "len": po_length},
             {"name": "目的城市", "old": "ＸＸＸＸＸＸＸＸＸＸＸＸＸＸＸＸ", "val": selected_city, "len": 32},
             {"name": "目的仓", "old": "ＸＸＸＸＸＸＸＸＸＸＸＸＸＸＸＸＸ", "val": warehouse, "len": 34},
             {"name": "商家名称", "old": "ＸＸＸＸＸＸＸＸＸＸＸＸＸＸＸ", "val": vendor_name, "len": 30}
