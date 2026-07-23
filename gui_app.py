@@ -157,7 +157,7 @@ class UpdateCheckThread(QThread):
             ssl_context.check_hostname = False
             ssl_context.verify_mode = ssl.CERT_NONE
             request = urllib.request.Request(github_api_url)
-            request.add_header('User-Agent', 'ToolHub/1.4')
+            request.add_header('User-Agent', 'ToolHub/1.5')
             with urllib.request.urlopen(request, context=ssl_context, timeout=10) as response:
                 data = json.loads(response.read().decode())
                 latest_version = data.get('tag_name', '').lstrip('v')
@@ -188,7 +188,7 @@ class DownloadUpdateThread(QThread):
             ssl_context.check_hostname = False
             ssl_context.verify_mode = ssl.CERT_NONE
             req = urllib.request.Request(self.url)
-            req.add_header('User-Agent', 'ToolHub/1.4')
+            req.add_header('User-Agent', 'ToolHub/1.5')
             with urllib.request.urlopen(req, context=ssl_context, timeout=30) as resp:
                 total = int(resp.headers.get('Content-Length', 0) or 0)
                 chunk_size = 65536
@@ -449,7 +449,7 @@ class KeywordAnalyzerGUI(QMainWindow):
         self.last_file_path = self.config_manager.get('last_csv_path', os.path.expanduser('~/Desktop'))
         
         # 应用版本和导出路径
-        self.app_version = "1.4"
+        self.app_version = "1.5"
         self.export_path = self.config_manager.get('export_path', os.path.expanduser('~/Desktop'))
 
         self.init_ui()
@@ -2323,8 +2323,8 @@ class KeywordAnalyzerGUI(QMainWindow):
                 #  B列: 第 row 行 -> 城市（如“汕头”）
                 #  C列: row+1 行 -> 供应商
                 #       row+2 行 -> 入库库房
-                #       row+3 行 -> EPL采购单号（EPL+13位）
-                #       row+4 行 -> 需求单号（PR+7位）
+                #       row+3 行 -> EPL采购单号（EPL+数字，位数不超过模板上限）
+                #       row+4 行 -> 需求单号（PR+数字，位数不超过模板上限）
                 #       row+5 行 -> 产品规格
                 city_cell = ws.cell(row, 2)  # 城市在第2列（B列）
                 supplier_cell = ws.cell(row + 1, 3)
@@ -5843,7 +5843,7 @@ class AppSettingsDialog(QDialog):
                 
                 print("[DEBUG] 正在创建请求...")
                 request = urllib.request.Request(github_api_url)
-                request.add_header('User-Agent', 'ToolHub/1.4')
+                request.add_header('User-Agent', 'ToolHub/1.5')
                 print("[DEBUG] 请求创建成功")
                 
                 print("[DEBUG] 正在连接到 GitHub API...")

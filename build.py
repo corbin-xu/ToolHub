@@ -2,7 +2,7 @@
 """
 ToolHub 构建脚本
 1. 使用 PyInstaller 打包 gui_app.py 为 dist/ToolHub.exe
-2. 使用 Inno Setup 打包为安装程序 dist/ToolHub-1.4.exe（需已安装 Inno Setup）
+2. 使用 Inno Setup 打包为安装程序 dist/ToolHub-1.5.exe（需已安装 Inno Setup）
 """
 import subprocess
 import sys
@@ -45,6 +45,7 @@ def build_installer():
     iscc_paths = [
         Path(os.environ.get("ProgramFiles(x86)", "")) / "Inno Setup 6" / "ISCC.exe",
         Path(os.environ.get("ProgramFiles", "")) / "Inno Setup 6" / "ISCC.exe",
+        Path("D:/Inno Setup 6/ISCC.exe"),
     ]
     iscc = None
     for name in iscc_names:
