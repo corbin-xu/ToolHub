@@ -693,8 +693,8 @@ class ShantouBCartonMarkGenerator:
     动态定位并替换模板中的全角“Ｘ”占位符（不同字段长度可不相同）。
     """
 
-    DEMAND_NO_PATTERN = re.compile(r"^PR\d{7}$")
-    EPL_PURCHASE_NO_PATTERN = re.compile(r"^EPL\d{13}$")
+    DEMAND_NO_PATTERN = re.compile(r"^PR[0-9]+$")
+    EPL_PURCHASE_NO_PATTERN = re.compile(r"^EPL[0-9]+$")
 
     def __init__(self, template_path: str | None = None) -> None:
         if template_path is None:
@@ -775,85 +775,113 @@ class ShantouBCartonMarkGenerator:
         self.content[pos_x:end] = buffer
         print(f"[DEBUG] 汕头B仓箱唛: 字段 '{label}' 替换成功")
 
-    def _replace_pr_field(self, label: str, value: str, seq_num: int) -> None:
+    def _find_prefixed_numeric_placeholder(
+        self, prefix: str
+    ) -> tuple[int, int, int] | None:
         """
-        替换需求单号：模板中为 PR + 7位数字（如 PR0000000）。
-        若 value 非空，必须符合 PR + 7位数字，否则抛出 ShantouBValidationError。
-        空值允许替换。
+        查找“前缀 + 连续数字”占位符，并返回：
+        （字段起始位置、字段结束位置、模板允许的最大数字位数）。
+
+        模板中的同一前缀可能同时出现在字段标题里（例如“EPL采购单号”），
+        因此扫描全部候选并选择数字段最长的一个作为实际占位符。
+        """
+        if self.content is None:
+            return None
+
+        prefix_bytes = prefix.encode("ascii")
+        best_match: tuple[int, int, int] | None = None
+        search_start = 0
+
+        while True:
+            pos_prefix = self.content.find(prefix_bytes, search_start)
+            if pos_prefix == -1:
+                break
+
+            pos_digits = pos_prefix + len(prefix_bytes)
+            end = pos_digits
+            while end < len(self.content) and 48 <= self.content[end] <= 57:
+                end += 1
+
+            digit_count = end - pos_digits
+            if digit_count > 0 and (
+                best_match is None or digit_count > best_match[2]
+            ):
+                best_match = (pos_prefix, end, digit_count)
+
+            search_start = pos_prefix + 1
+
+        return best_match
+
+    def _replace_prefixed_numeric_field(
+        self,
+        label: str,
+        value: str,
+        seq_num: int,
+        prefix: str,
+        pattern: re.Pattern[str],
+    ) -> None:
+        """
+        按模板中占位符的实际长度替换带前缀的数字字段。
+
+        允许空值，或“固定前缀 + 1 至模板最大位数的数字”。替换逻辑与供应商、
+        入库库房等字段一致：写入实际内容，剩余位置补 NUL 空字节。这样既能保持
+        PLD 文件结构不变，也不会让填充字符参与文本居中排版。
         """
         if self.content is None:
             return
-        value = (value or "").strip()
-        if value and not self.DEMAND_NO_PATTERN.match(value):
+
+        placeholder = self._find_prefixed_numeric_placeholder(prefix)
+        if placeholder is None:
             raise ShantouBValidationError(
-                "需求单号",
-                f"格式必须为 PR+7位数字（如 PR0000000），当前为: {value}",
+                label,
+                f"模板中未找到 {prefix}+连续数字 的占位符",
                 seq_num,
             )
-        try:
-            label_bytes = label.encode("gbk")
-            pr_bytes = b"PR"
-        except Exception as e:
-            print(f"[DEBUG] 编码失败 ({label}): {e}")
-            return
-        pos_label = self.content.find(label_bytes)
-        if pos_label == -1:
-            print(f"[DEBUG] 汕头B仓箱唛: 未找到标签 '{label}'")
-            return
-        search_start = pos_label + len(label_bytes)
-        pos_pr = self.content.find(pr_bytes, search_start)
-        if pos_pr == -1:
-            print(f"[DEBUG] 汕头B仓箱唛: 未找到标签 '{label}' 后面的 PR 占位符")
-            return
-        pos_start = pos_pr  # 空值时整段替换为空格
-        end = pos_pr + 9   # PR + 7位 = 9字节
-        if end > len(self.content):
-            return
-        if value:
-            replace_bytes = (value[2:9]).encode("gbk")
-            if len(replace_bytes) != 7:
-                replace_bytes = replace_bytes[:7].ljust(7, b"0")
-            self.content[pos_pr + 2 : end] = replace_bytes
-        else:
-            self.content[pos_start:end] = b" " * 9  # 完全空：整段用空格
-        print(f"[DEBUG] 汕头B仓箱唛: 字段 '{label}' 替换成功")
+
+        pos_start, end, max_digits = placeholder
+        value = (value or "").strip()
+        actual_digits = len(value) - len(prefix)
+
+        if value and (
+            not pattern.fullmatch(value)
+            or actual_digits < 1
+            or actual_digits > max_digits
+        ):
+            raise ShantouBValidationError(
+                label,
+                f"格式必须为 {prefix}+1至{max_digits}位数字，当前为: {value}",
+                seq_num,
+            )
+
+        field_byte_len = end - pos_start
+        replace_bytes = value.encode("ascii")
+        buffer = bytearray(b"\x00" * field_byte_len)
+        buffer[: len(replace_bytes)] = replace_bytes
+        self.content[pos_start:end] = buffer
+        print(
+            f"[DEBUG] 汕头B仓箱唛: 字段 '{label}' 替换成功"
+            f"（模板最大{max_digits}位数字）"
+        )
+
+    def _replace_pr_field(self, label: str, value: str, seq_num: int) -> None:
+        """替换需求单号，数字位数上限自动取自模板中的 PR 占位符。"""
+        self._replace_prefixed_numeric_field(
+            label,
+            value,
+            seq_num,
+            prefix="PR",
+            pattern=self.DEMAND_NO_PATTERN,
+        )
 
     def _replace_epl_field(self, label: str, value: str, seq_num: int) -> None:
-        """
-        替换 EPL采购单号：模板中为 EPL + 13位数字（如 EPL0000000000000）。
-        若 value 非空，必须符合 EPL + 13位数字，否则抛出 ShantouBValidationError。
-        空值允许替换。
-        """
-        if self.content is None:
-            return
-        value = (value or "").strip()
-        if value and not self.EPL_PURCHASE_NO_PATTERN.match(value):
-            raise ShantouBValidationError(
-                "EPL采购单号",
-                f"格式必须为 EPL+13位数字（如 EPL0000000000000），当前为: {value}",
-                seq_num,
-            )
-        epl_bytes = b"EPL"
-        pos_epl = 0
-        while True:
-            pos_epl = self.content.find(epl_bytes, pos_epl)
-            if pos_epl == -1:
-                print(f"[DEBUG] 汕头B仓箱唛: 未找到 EPL+13位 占位符")
-                return
-            pos_digits = pos_epl + 3
-            end = pos_epl + 16  # EPL + 13位 = 16字节
-            if end <= len(self.content):
-                chunk = bytes(self.content[pos_digits:pos_epl + 16])
-                if chunk.isdigit() and len(chunk) == 13:
-                    if value:
-                        replace_bytes = (value[3:16]).encode("gbk")
-                        replace_bytes = (replace_bytes[:13].ljust(13, b"0"))[:13]
-                        self.content[pos_digits:end] = replace_bytes
-                    else:
-                        self.content[pos_epl:end] = b" " * 16  # 完全空：整段用空格
-                    print(f"[DEBUG] 汕头B仓箱唛: 字段 '{label}' 替换成功")
-                    return
-            pos_epl += 1
+        """替换 EPL采购单号，数字位数上限自动取自模板中的 EPL 占位符。"""
+        self._replace_prefixed_numeric_field(
+            label,
+            value,
+            seq_num,
+            prefix="EPL",
+            pattern=self.EPL_PURCHASE_NO_PATTERN,
+        )
 
     def generate(
         self,
@@ -874,8 +902,8 @@ class ShantouBCartonMarkGenerator:
             city: 城市名称（例如“汕头”）
             supplier: 供应商名称
             inbound_warehouse: 入库库房（全称）
-            demand_no: 需求单号（PR+7位数字）
-            epl_purchase_no: EPL采购单号（EPL+13位数字）
+            demand_no: 需求单号（PR+数字，位数不超过模板占位符）
+            epl_purchase_no: EPL采购单号（EPL+数字，位数不超过模板占位符）
             product_spec: 产品规格
             output_dir: 输出目录
         """
@@ -890,7 +918,7 @@ class ShantouBCartonMarkGenerator:
         output_filename = f"{seq_num}.汕头B仓箱唛.pld"
         output_path = os.path.join(output_dir, output_filename)
 
-        # 替换字段（需求单号、EPL采购单号会校验格式，非空时位数必须一致）
+        # 替换字段（需求单号、EPL采购单号允许模板最大位数及以下的数字）
         self._replace_field_by_label("供应商", supplier)
         self._replace_field_by_label("入库库房", inbound_warehouse)
         self._replace_pr_field("需求单号", demand_no, seq_num)

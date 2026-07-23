@@ -1,6 +1,6 @@
 [Setup]
 AppName=JD Supplier Label Generator
-AppVersion=1.0.4
+AppVersion=1.0.5
 AppPublisher=xgb819
 AppPublisherURL=https://github.com/xgb819/jd-supplier-label-generator
 AppSupportURL=https://github.com/xgb819/jd-supplier-label-generator
@@ -10,7 +10,7 @@ DefaultGroupName=JD Supplier Label Generator
 AllowNoIcons=yes
 LicenseFile=LICENSE
 OutputDir=dist
-OutputBaseFilename=jd-supplier-label-generator-1.0.4
+OutputBaseFilename=jd-supplier-label-generator-1.0.5
 Compression=zip
 SolidCompression=yes
 PrivilegesRequired=lowest
@@ -18,7 +18,7 @@ ArchitecturesInstallIn64BitMode=x64
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
-Name: "chinesesimplified"; MessagesFile: "compiler:ChineseSimplified.isl"
+Name: "chinesesimplified"; MessagesFile: "compiler:Languages\ChineseSimplified.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
