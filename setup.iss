@@ -1,6 +1,6 @@
 [Setup]
 AppName=JD Supplier Label Generator
-AppVersion=1.0.5
+AppVersion=1.0.6
 AppPublisher=xgb819
 AppPublisherURL=https://github.com/xgb819/jd-supplier-label-generator
 AppSupportURL=https://github.com/xgb819/jd-supplier-label-generator
@@ -10,7 +10,7 @@ DefaultGroupName=JD Supplier Label Generator
 AllowNoIcons=yes
 LicenseFile=LICENSE
 OutputDir=dist
-OutputBaseFilename=jd-supplier-label-generator-1.0.5
+OutputBaseFilename=jd-supplier-label-generator-1.0.6
 Compression=zip
 SolidCompression=yes
 PrivilegesRequired=lowest

@@ -27,8 +27,8 @@ class CartonMarkGenerator:
     """箱唛生成器"""
 
     PO_TEMPLATE_NAMES = {
-        10: "carton_mark_10.pld",
-        12: "carton_mark_12.pld",
+        length: f"carton_mark_{length}.pld"
+        for length in range(7, 21)
     }
     
     # 城市映射
@@ -399,7 +399,7 @@ class CartonMarkGenerator:
 
     @classmethod
     def is_valid_po_num(cls, po_num: str) -> bool:
-        """采购单号只允许10位或12位半角数字。"""
+        """采购单号只允许7到20位半角数字。"""
         return (
             isinstance(po_num, str)
             and po_num.isascii()
@@ -410,7 +410,7 @@ class CartonMarkGenerator:
     def load_template_for_po(self, po_num: str) -> bool:
         """根据采购单号位数选择并加载对应的箱唛模板。"""
         if not self.is_valid_po_num(po_num):
-            print(f"错误: 采购单号必须是10位或12位数字，当前为: {po_num}")
+            print(f"错误: 采购单号必须是7到20位数字，当前为: {po_num}")
             return False
 
         if self._use_po_template:
@@ -500,7 +500,7 @@ class CartonMarkGenerator:
         生成箱唛文件
         
         Args:
-            po_num: 采购单号（10位或12位）
+            po_num: 采购单号（7到20位）
             warehouse: 目的仓
             city_code: 城市代码（1-8）
             vendor_name: 商家名称
@@ -594,7 +594,7 @@ class CartonMarkGenerator:
         生成箱唛文件到指定路径
         
         Args:
-            po_num: 采购单号（10位或12位）
+            po_num: 采购单号（7到20位）
             warehouse: 目的仓
             city_code: 城市代码（1-8）
             vendor_name: 商家名称
