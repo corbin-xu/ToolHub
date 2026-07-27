@@ -1,6 +1,6 @@
 [Setup]
 AppName=ToolHub
-AppVersion=1.5
+AppVersion=1.6
 AppPublisher=xgb819
 AppPublisherURL=https://github.com/xgb819/ToolHub
 AppSupportURL=https://github.com/xgb819/ToolHub
@@ -10,7 +10,7 @@ DefaultGroupName=ToolHub
 AllowNoIcons=yes
 LicenseFile=LICENSE
 OutputDir=dist
-OutputBaseFilename=ToolHub-1.5
+OutputBaseFilename=ToolHub-1.6
 Compression=zip
 SolidCompression=yes
 PrivilegesRequired=lowest
