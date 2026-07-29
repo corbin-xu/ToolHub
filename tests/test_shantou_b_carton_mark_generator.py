@@ -25,8 +25,8 @@ class ShantouBCartonMarkGeneratorTests(unittest.TestCase):
 
         self.assertIsNotNone(pr_placeholder)
         self.assertIsNotNone(epl_placeholder)
-        self.assertEqual(pr_placeholder[2], 14)
-        self.assertEqual(epl_placeholder[2], 13)
+        self.assertEqual(pr_placeholder[2], 20)
+        self.assertEqual(epl_placeholder[2], 19)
 
     def test_shorter_values_replace_remaining_placeholder_with_nulls(self) -> None:
         generator = self.make_generator()
@@ -48,8 +48,8 @@ class ShantouBCartonMarkGeneratorTests(unittest.TestCase):
     def test_accepts_values_at_template_maximum_length(self) -> None:
         generator = self.make_generator()
 
-        generator._replace_pr_field("需求单号", "PR12345678901234", 1)
-        generator._replace_epl_field("EPL采购单号", "EPL1234567890123", 1)
+        generator._replace_pr_field("需求单号", "PR12345678901234567890", 1)
+        generator._replace_epl_field("EPL采购单号", "EPL1234567890123456789", 1)
 
     def test_empty_values_clear_the_whole_placeholder_with_nulls(self) -> None:
         generator = self.make_generator()
@@ -72,10 +72,12 @@ class ShantouBCartonMarkGeneratorTests(unittest.TestCase):
         generator = self.make_generator()
 
         with self.assertRaises(ShantouBValidationError):
-            generator._replace_pr_field("需求单号", "PR123456789012345", 1)
+            generator._replace_pr_field(
+                "需求单号", "PR123456789012345678901", 1
+            )
         with self.assertRaises(ShantouBValidationError):
             generator._replace_epl_field(
-                "EPL采购单号", "EPL12345678901234", 1
+                "EPL采购单号", "EPL12345678901234567890", 1
             )
 
     def test_rejects_non_numeric_suffix(self) -> None:
