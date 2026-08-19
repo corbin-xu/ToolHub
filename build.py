@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
 JD Supplier Label Generator 构建脚本
-1. 使用 PyInstaller 打包 gui_app.py 为 dist/jd-supplier-label-generator.exe
-2. 使用 Inno Setup 打包为安装程序 dist/jd-supplier-label-generator-1.1.0.exe（需已安装 Inno Setup）
+1. 使用 PyInstaller 打包 gui_app.py 为 dist/JD Supplier Label Generator.exe
+2. 使用 Inno Setup 打包为安装程序 dist/jd-supplier-label-generator-v1.1.0-20260819.exe（需已安装 Inno Setup）
 """
 import subprocess
 import sys
@@ -12,7 +12,7 @@ from pathlib import Path
 # 项目根目录（build.py 所在目录）
 ROOT = Path(__file__).resolve().parent
 DIST = ROOT / "dist"
-EXE_NAME = "jd-supplier-label-generator.exe"
+EXE_NAME = "JD Supplier Label Generator.exe"
 SPEC_FILE = ROOT / "jd-supplier-label-generator.spec"
 SETUP_ISS = ROOT / "setup.iss"
 

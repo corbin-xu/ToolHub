@@ -1,5 +1,5 @@
 [Setup]
-AppName=JD Supplier Label Generator
+AppName=京东供应商标签生成器
 AppVersion=1.1.0
 AppPublisher=xgb819
 AppPublisherURL=https://github.com/xgb819/jd-supplier-label-generator
@@ -11,7 +11,7 @@ AllowNoIcons=yes
 LicenseFile=LICENSE
 SetupIconFile=assets\favicon.ico
 OutputDir=dist
-OutputBaseFilename=jd-supplier-label-generator-1.1.0
+OutputBaseFilename=jd-supplier-label-generator-v1.1.0-20260819
 Compression=zip
 SolidCompression=yes
 PrivilegesRequired=lowest
@@ -25,14 +25,15 @@ Name: "chinesesimplified"; MessagesFile: "compiler:Languages\ChineseSimplified.i
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-Source: "dist\jd-supplier-label-generator.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "dist\JD Supplier Label Generator.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "templates\*.pld"; DestDir: "{app}\templates"; Flags: ignoreversion
 Source: "config.json"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
-Name: "{group}\JD Supplier Label Generator"; Filename: "{app}\jd-supplier-label-generator.exe"
-Name: "{group}\{cm:UninstallProgram,JD Supplier Label Generator}"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\JD Supplier Label Generator"; Filename: "{app}\jd-supplier-label-generator.exe"; Tasks: desktopicon
+Name: "{group}\京东供应商标签生成器"; Filename: "{app}\JD Supplier Label Generator.exe"
+Name: "{group}\{cm:UninstallProgram,京东供应商标签生成器}"; Filename: "{uninstallexe}"
+Name: "{autodesktop}\京东供应商标签生成器"; Filename: "{app}\JD Supplier Label Generator.exe"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\jd-supplier-label-generator.exe"; Description: "{cm:LaunchProgram,JD Supplier Label Generator}"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\JD Supplier Label Generator.exe"; Description: "{cm:LaunchProgram,京东供应商标签生成器}"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\JD Supplier Label Generator.exe"; Flags: nowait skipifnotsilent

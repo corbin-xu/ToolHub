@@ -336,11 +336,15 @@ def _app_base_dir():
         return pathlib.Path(sys._MEIPASS)
     return pathlib.Path(__file__).resolve().parent
 
+def _resource_base_dir():
+    if getattr(sys, "frozen", False):
+        return pathlib.Path(sys._MEIPASS)
+    return pathlib.Path(__file__).resolve().parent
 
 def _app_style_sheet():
     """生成开发环境和打包环境都可用的主题样式。"""
-    arrow_path = (_app_base_dir() / "assets" / "chevron-down.xpm").as_posix()
-    arrow_up_path = (_app_base_dir() / "assets" / "chevron-up.xpm").as_posix()
+    arrow_path = (_resource_base_dir() / "assets" / "chevron-down.xpm").as_posix()
+    arrow_up_path = (_resource_base_dir() / "assets" / "chevron-up.xpm").as_posix()
     return (
         APP_STYLE_SHEET
         .replace("__CHEVRON_DOWN__", arrow_path)
@@ -783,23 +787,17 @@ class DownloadUpdateThread(QThread):
             self.error.emit(str(e))
 
 
-def _run_windows_updater(current_exe, new_exe_path):
-    """Windows: 创建并执行更新脚本，关闭当前进程后替换 exe 并重启"""
+def _run_windows_installer(installer_path):
     import subprocess
-    import tempfile
-    bat = tempfile.NamedTemporaryFile(mode='w', suffix='.bat', delete=False)
-    try:
-        bat.write('@echo off\n')
-        bat.write('ping 127.0.0.1 -n 3 > nul\n')
-        bat.write(f'del /f /q "{current_exe}"\n')
-        bat.write(f'move /y "{new_exe_path}" "{current_exe}"\n')
-        bat.write(f'start "" "{current_exe}"\n')
-        bat.write('del "%~f0"\n')
-        bat.close()
-        flags = getattr(subprocess, 'CREATE_NO_WINDOW', 0x08000000) if sys.platform == 'win32' else 0
-        subprocess.Popen(['cmd', '/c', bat.name], creationflags=flags)
-    except Exception:
-        pass
+
+    subprocess.Popen([
+        installer_path,
+        "/SP-",
+        "/VERYSILENT",
+        "/SUPPRESSMSGBOXES",
+        "/NORESTART",
+        "/CLOSEAPPLICATIONS",
+    ])
 
 
 def show_new_version_dialog(parent, current_version, latest_version, release_url, direct_download_url, config_manager):
@@ -858,22 +856,34 @@ def _do_inapp_download_and_update(parent, download_url, version):
 
     def on_finished(path):
         dlg.accept()
-        if sys.platform == 'win32' and getattr(sys, 'frozen', False):
-            current_exe = sys.executable
+
+        if sys.platform == 'win32':
             try:
-                _run_windows_updater(current_exe, path)
+                _run_windows_installer(path)
                 QApplication.quit()
             except Exception as e:
-                QMessageBox.warning(parent, "更新失败", f"无法自动更新: {e}\n\n请手动运行: {path}")
+                QMessageBox.warning(
+                    parent,
+                    "更新失败",
+                    f"无法自动安装更新: {e}\n\n安装包位置: {path}"
+                )
         elif sys.platform == 'darwin':
             import subprocess
             try:
                 subprocess.Popen(['open', path])
             except Exception:
                 pass
-            QMessageBox.information(parent, "下载完成", f"已保存到: {path}\n请打开 DMG 并将应用拖入「应用程序」完成更新。")
+            QMessageBox.information(
+                parent,
+                "下载完成",
+                f"已保存到: {path}\n请打开 DMG 并将应用拖入「应用程序」完成更新。"
+            )
         else:
-            QMessageBox.information(parent, "下载完成", f"已保存到: {path}\n请手动安装。")
+            QMessageBox.information(
+                parent,
+                "下载完成",
+                f"已保存到: {path}\n请手动安装。"
+            )
 
     def on_error(err_msg):
         dlg.reject()
@@ -3631,7 +3641,7 @@ def main():
     QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
     app = QApplication(sys.argv)
     app.setApplicationName(APP_NAME)
-    app_icon_path = _app_base_dir() / "assets" / "favicon.ico"
+    app_icon_path = _resource_base_dir() / "assets" / "favicon.ico"
     if app_icon_path.exists():
         app.setWindowIcon(QIcon(str(app_icon_path)))
     app.setStyle("Fusion")
