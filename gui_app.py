@@ -1,5 +1,5 @@
 """
-电商工具箱 - GUI 应用
+JD Supplier Label Generator - GUI 应用
 基于 PyQt5 的图形界面
 """
 
@@ -8,6 +8,23 @@ import os
 import pathlib
 import warnings
 from typing import Dict
+
+
+APP_NAME = "JD Supplier Label Generator"
+APP_SLUG = "jd-supplier-label-generator"
+APP_VERSION = "1.0.7"
+GITHUB_REPOSITORY = "xgb819/jd-supplier-label-generator"
+GITHUB_RELEASES_URL = f"https://github.com/{GITHUB_REPOSITORY}/releases"
+GITHUB_LATEST_RELEASE_API = f"https://api.github.com/repos/{GITHUB_REPOSITORY}/releases/latest"
+USER_AGENT = f"{APP_SLUG}/{APP_VERSION}"
+
+
+def _version_key(version):
+    """将三段式版本号转换为可比较的整数元组。"""
+    try:
+        return tuple(int(part) for part in str(version).lstrip('v').split('.'))
+    except (TypeError, ValueError):
+        return (0,)
 
 
 def _app_base_dir():
@@ -93,7 +110,10 @@ def _pick_download_url_from_assets(assets, tag_name):
     v = tag_name.lstrip('v') if tag_name else ''
     for a in assets:
         name = (a.get('name') or '').lower()
-        if name.endswith(suffix) and ('jd-supplier-label-generator' in name or 'jd supplier label generator' in name):
+        if name.endswith(suffix) and (
+            'jd-supplier-label-generator' in name
+            or 'jd supplier label generator' in name
+        ):
             url = a.get('browser_download_url')
             if url:
                 return url
@@ -152,16 +172,16 @@ class UpdateCheckThread(QThread):
             import urllib.request
             import json
             import ssl
-            github_api_url = "https://api.github.com/repos/xgb819/jd-supplier-label-generator/releases/latest"
+            github_api_url = GITHUB_LATEST_RELEASE_API
             ssl_context = ssl.create_default_context()
             ssl_context.check_hostname = False
             ssl_context.verify_mode = ssl.CERT_NONE
             request = urllib.request.Request(github_api_url)
-            request.add_header('User-Agent', 'jd-supplier-label-generator/1.0.7')
+            request.add_header('User-Agent', USER_AGENT)
             with urllib.request.urlopen(request, context=ssl_context, timeout=10) as response:
                 data = json.loads(response.read().decode())
                 latest_version = data.get('tag_name', '').lstrip('v')
-                release_url = data.get('html_url', '') or ('https://github.com/xgb819/jd-supplier-label-generator/releases')
+                release_url = data.get('html_url', '') or GITHUB_RELEASES_URL
                 assets = data.get('assets', [])
                 direct_download_url = _pick_download_url_from_assets(assets, data.get('tag_name', ''))
         except Exception:
@@ -188,7 +208,7 @@ class DownloadUpdateThread(QThread):
             ssl_context.check_hostname = False
             ssl_context.verify_mode = ssl.CERT_NONE
             req = urllib.request.Request(self.url)
-            req.add_header('User-Agent', 'jd-supplier-label-generator/1.0.7')
+            req.add_header('User-Agent', USER_AGENT)
             with urllib.request.urlopen(req, context=ssl_context, timeout=30) as resp:
                 total = int(resp.headers.get('Content-Length', 0) or 0)
                 chunk_size = 65536
@@ -255,7 +275,7 @@ def _do_inapp_download_and_update(parent, download_url, version):
     """应用内下载更新包，显示进度，完成后执行更新（Windows 自动替换 exe 并重启）"""
     import tempfile
     suffix = '.exe' if sys.platform == 'win32' else '.dmg'
-    fname = f"jd-supplier-label-generator-{version}{suffix}"
+    fname = f"{APP_SLUG}-{version}{suffix}"
     save_path = os.path.join(tempfile.gettempdir(), fname)
 
     dlg = QDialog(parent)
@@ -429,7 +449,7 @@ class KeywordAnalyzerGUI(QMainWindow):
         super().__init__()
         self.config_manager = ConfigManager()
         
-        self.setWindowTitle("JD Supplier Label Generator")
+        self.setWindowTitle(APP_NAME)
         
         # 设置固定窗口大小
         self.setFixedSize(900, 600)
@@ -449,7 +469,7 @@ class KeywordAnalyzerGUI(QMainWindow):
         self.last_file_path = self.config_manager.get('last_csv_path', os.path.expanduser('~/Desktop'))
         
         # 应用版本和导出路径
-        self.app_version = "1.0.7"
+        self.app_version = APP_VERSION
         self.export_path = self.config_manager.get('export_path', os.path.expanduser('~/Desktop'))
 
         self.init_ui()
@@ -545,7 +565,7 @@ class KeywordAnalyzerGUI(QMainWindow):
         ignored = self.config_manager.get('ignored_versions', [])
         if latest_version in ignored:
             return
-        if latest_version > self.app_version:
+        if _version_key(latest_version) > _version_key(self.app_version):
             show_new_version_dialog(
                 self, self.app_version, latest_version, release_url,
                 direct_download_url or None, self.config_manager
@@ -5738,7 +5758,7 @@ class SettingsDialog(QDialog):
 class AppSettingsDialog(QDialog):
     """全局设置对话框"""
     
-    def __init__(self, parent=None, app_version="1.0.0", export_path="", config_manager=None):
+    def __init__(self, parent=None, app_version=APP_VERSION, export_path="", config_manager=None):
         super().__init__(parent)
         self.app_version = app_version
         self.export_path = export_path.replace('/', '\\')  # 统一转换为反斜杠
@@ -5828,7 +5848,7 @@ class AppSettingsDialog(QDialog):
             from datetime import datetime
             
             # GitHub API URL
-            github_api_url = "https://api.github.com/repos/xgb819/jd-supplier-label-generator/releases/latest"
+            github_api_url = GITHUB_LATEST_RELEASE_API
             
             print("[DEBUG] ========== 开始检测更新（设置窗口） ==========")
             print(f"[DEBUG] 当前版本: {self.app_version}")
@@ -5843,7 +5863,7 @@ class AppSettingsDialog(QDialog):
                 
                 print("[DEBUG] 正在创建请求...")
                 request = urllib.request.Request(github_api_url)
-                request.add_header('User-Agent', 'jd-supplier-label-generator/1.0.7')
+                request.add_header('User-Agent', USER_AGENT)
                 print("[DEBUG] 请求创建成功")
                 
                 print("[DEBUG] 正在连接到 GitHub API...")
@@ -5867,9 +5887,9 @@ class AppSettingsDialog(QDialog):
                         except:
                             self.release_date = published_at[:10]
                     
-                    if latest_version > self.app_version:
+                    if _version_key(latest_version) > _version_key(self.app_version):
                         print(f"[INFO] 发现新版本: {latest_version}")
-                        release_url = data.get('html_url', '') or 'https://github.com/xgb819/jd-supplier-label-generator/releases'
+                        release_url = data.get('html_url', '') or GITHUB_RELEASES_URL
                         direct_download_url = _pick_download_url_from_assets(
                             data.get('assets', []), data.get('tag_name', '')
                         )

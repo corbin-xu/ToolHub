@@ -22,7 +22,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='JD Supplier Label Generator',
+    name='jd-supplier-label-generator',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

@@ -2,7 +2,7 @@
 """
 JD Supplier Label Generator 构建脚本
 1. 使用 PyInstaller 打包 gui_app.py 为 dist/jd-supplier-label-generator.exe
-2. 使用 Inno Setup 打包为安装程序 dist/jd-supplier-label-generator-1.7.exe（需已安装 Inno Setup）
+2. 使用 Inno Setup 打包为安装程序 dist/jd-supplier-label-generator-1.0.7.exe（需已安装 Inno Setup）
 """
 import subprocess
 import sys
@@ -63,7 +63,7 @@ def build_installer():
                 break
     if not iscc:
         print("[build] 未找到 Inno Setup (iscc)。请安装 Inno Setup 6 或将 ISCC.exe 加入 PATH。")
-        print("[build] 跳过安装包步骤，仅保留 dist/jd-supplier-label-generator.exe")
+        print(f"[build] 跳过安装包步骤，仅保留 dist/{EXE_NAME}")
         return False
     run([iscc, str(SETUP_ISS)])
     print(f"[build] 安装包已生成到: {DIST}")
@@ -74,7 +74,7 @@ def main():
     import argparse
     parser = argparse.ArgumentParser(description="构建 JD Supplier Label Generator 可执行程序与安装包")
     parser.add_argument("--exe-only", action="store_true", help="仅打包 exe，不生成安装程序")
-    parser.add_argument("--installer-only", action="store_true", help="仅生成安装程序（假定 dist/jd-supplier-label-generator.exe 已存在）")
+    parser.add_argument("--installer-only", action="store_true", help=f"仅生成安装程序（假定 dist/{EXE_NAME} 已存在）")
     args = parser.parse_args()
 
     if not args.installer_only:

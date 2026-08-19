@@ -1,6 +1,6 @@
 # JD Supplier Label Generator
 
-电商工具箱 - 一个功能强大的电商数据处理工具
+京东供应商标签生成器，支持标签、箱唛、预定表和视频封面的批量处理。
 
 ## 功能特性
 
@@ -19,14 +19,14 @@
 
 ### 方式一：使用安装程序（推荐）
 
-下载最新的 `jd-supplier-label-generator-1.7.exe` 并运行安装程序。
+下载最新的 `jd-supplier-label-generator-1.0.7.exe` 并运行安装程序。
 
 ### 方式二：从源代码运行
 
 1. 克隆仓库：
 ```bash
 git clone https://github.com/xgb819/jd-supplier-label-generator.git
-cd JD Supplier Label Generator
+cd jd-supplier-label-generator
 ```
 
 2. 安装依赖：
@@ -70,7 +70,7 @@ python gui_app.py
 - **GitHub**: [xgb819](https://github.com/xgb819)
 - **邮箱**: xgb819@gmail.com
 
-提交代码时请使用 **英文** 写 commit message，避免在 GitHub 上出现乱码。详见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+提交代码时请使用 **英文** 编写 commit message，避免在 GitHub 上出现乱码。
 
 ## 许可证
 
@@ -78,10 +78,14 @@ MIT License - 详见 LICENSE 文件
 
 ## 更新日志
 
+版本号采用 `主版本.次版本.修订号` 三段式格式。
+
 ### v1.0.7 (2026-07-28)
 - 汕头B仓箱唛需求单号支持 PR 加 1 到 20 位数字
 - 汕头B仓箱唛 EPL采购单号支持 EPL 加 1 到 19 位数字
 - 保持兼容新上限以内的较短单号
+- 项目名称统一为 JD Supplier Label Generator
+- 版本号统一迁移为三段式格式
 
 ### v1.0.6 (2026-07-27)
 - 箱唛采购单号支持 7 到 20 位半角数字
@@ -95,6 +99,12 @@ MIT License - 详见 LICENSE 文件
 ### v1.0.4 (2026-07-20)
 - 箱唛采购单号兼容 10 位和 12 位数字
 - 根据采购单号位数自动选择对应的箱唛模板
+
+### v1.0.3 (2026-02-22)
+- 更新汕头B仓箱唛模板和字段结构
+- 新增 EPL采购单号并调整需求单号格式校验
+- 支持按系统选择更新包以及应用内下载更新
+- 修复种草视频表格导出路径
 
 ### v1.0.2 (2026-02-09)
 - 更新箱唛目的城市逻辑，支持全国城市及带后缀序号（如“郑州2”）
