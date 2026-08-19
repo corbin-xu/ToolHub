@@ -33,7 +33,7 @@ goto inno_missing
 echo [build] Building the installer with Inno Setup...
 "%ISCC%" "setup.iss"
 if errorlevel 1 goto inno_failed
-echo [build] Created dist\jd-supplier-label-generator-1.0.7.exe
+echo [build] Created dist\jd-supplier-label-generator-1.1.0.exe
 exit /b 0
 
 :pyinstaller_failed

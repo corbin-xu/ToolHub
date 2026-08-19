@@ -6,7 +6,8 @@ a = Analysis(
     pathex=[],
     binaries=[],
     datas=[
-        ('templates', 'templates'),
+        ('templates/*.pld', 'templates'),
+        ('assets', 'assets'),
         ('config.json', '.'),
     ],
     hiddenimports=[
@@ -44,5 +45,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon='icon.ico',
+    icon='assets/favicon.ico',
 )

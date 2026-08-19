@@ -1,6 +1,6 @@
 [Setup]
 AppName=JD Supplier Label Generator
-AppVersion=1.0.7
+AppVersion=1.1.0
 AppPublisher=xgb819
 AppPublisherURL=https://github.com/xgb819/jd-supplier-label-generator
 AppSupportURL=https://github.com/xgb819/jd-supplier-label-generator
@@ -9,12 +9,13 @@ DefaultDirName={autopf}\JD Supplier Label Generator
 DefaultGroupName=JD Supplier Label Generator
 AllowNoIcons=yes
 LicenseFile=LICENSE
+SetupIconFile=assets\favicon.ico
 OutputDir=dist
-OutputBaseFilename=jd-supplier-label-generator-1.0.7
+OutputBaseFilename=jd-supplier-label-generator-1.1.0
 Compression=zip
 SolidCompression=yes
 PrivilegesRequired=lowest
-ArchitecturesInstallIn64BitMode=x64
+ArchitecturesInstallIn64BitMode=x64compatible
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"

@@ -1,11 +1,4 @@
 {
-  "impression_threshold": 16,
-  "cost_threshold": 3.91,
-  "ctr_threshold": 6.91,
-  "conversion_threshold": 1.0,
-  "window_width": 900,
-  "window_height": 600,
-  "last_csv_path": "C:/Users/Administrator/Desktop",
   "sheet_mapping": {
     "3C": {
       "外星人": [
@@ -65,6 +58,5 @@
       "100119600327|U99配件主链接2": "",
       "100238108525|100238108525": ""
     }
-  },
-  "export_path": "C:\\Users\\Administrator\\Desktop"
+  }
 }

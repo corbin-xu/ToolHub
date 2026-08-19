@@ -1,12 +1,9 @@
-"""
-配置管理模块 - 保存和加载阈值设置
-"""
+"""应用配置的读取与保存。"""
 
 import json
 import os
 import sys
 from pathlib import Path
-from typing import Dict
 
 
 def _config_path():
@@ -22,12 +19,6 @@ class ConfigManager:
     CONFIG_FILE = "config.json"  # 仅作默认名，实际路径用 _config_path()
     
     DEFAULT_CONFIG = {
-        'impression_threshold': 100,      # 展现数阈值
-        'cost_threshold': 50,             # 花费阈值
-        'ctr_threshold': 3.0,             # 点击率阈值 (%)
-        'conversion_threshold': 1.0,      # 转化率阈值 (%)
-        'window_width': 900,              # 窗口宽度
-        'window_height': 600,             # 窗口高度
         'ignored_versions': [],           # 用户选择“忽略该版本”的版本号列表
     }
     
@@ -35,7 +26,7 @@ class ConfigManager:
         self.config = self.load_config()
     
     @staticmethod
-    def load_config() -> Dict:
+    def load_config() -> dict:
         """加载配置文件"""
         path = _config_path()
         if path.exists():
@@ -66,24 +57,3 @@ class ConfigManager:
     def set(self, key: str, value):
         """设置配置值"""
         self.config[key] = value
-    
-    def get_thresholds(self) -> Dict:
-        """获取所有阈值"""
-        return {
-            'impression_threshold': self.get('impression_threshold'),
-            'cost_threshold': self.get('cost_threshold'),
-            'ctr_threshold': self.get('ctr_threshold'),
-            'conversion_threshold': self.get('conversion_threshold'),
-        }
-    
-    def set_thresholds(self, thresholds: Dict) -> bool:
-        """设置所有阈值"""
-        try:
-            self.set('impression_threshold', thresholds.get('impression_threshold', 100))
-            self.set('cost_threshold', thresholds.get('cost_threshold', 50))
-            self.set('ctr_threshold', thresholds.get('ctr_threshold', 3.0))
-            self.set('conversion_threshold', thresholds.get('conversion_threshold', 1.0))
-            return self.save_config()
-        except Exception as e:
-            print(f"阈值设置失败: {e}")
-            return False

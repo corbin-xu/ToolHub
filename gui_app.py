@@ -10,13 +10,313 @@ import warnings
 from typing import Dict
 
 
-APP_NAME = "JD Supplier Label Generator"
+APP_NAME = "京东供应商标签生成器"
 APP_SLUG = "jd-supplier-label-generator"
-APP_VERSION = "1.0.7"
+APP_VERSION = "1.1.0"
 GITHUB_REPOSITORY = "xgb819/jd-supplier-label-generator"
 GITHUB_RELEASES_URL = f"https://github.com/{GITHUB_REPOSITORY}/releases"
 GITHUB_LATEST_RELEASE_API = f"https://api.github.com/repos/{GITHUB_REPOSITORY}/releases/latest"
 USER_AGENT = f"{APP_SLUG}/{APP_VERSION}"
+
+
+APP_STYLE_SHEET = """
+QWidget {
+    color: #1f2937;
+    font-family: "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
+    font-size: 13px;
+}
+
+QMainWindow, QWidget#appRoot {
+    background: #e9eef5;
+}
+
+QWidget#workspace {
+    background: transparent;
+    border: none;
+}
+
+QLabel#mutedText {
+    color: #6b7280;
+}
+
+QGroupBox {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    margin-top: 16px;
+    padding-top: 12px;
+}
+
+QGroupBox::title {
+    subcontrol-origin: margin;
+    subcontrol-position: top left;
+    left: 16px;
+    top: 2px;
+    background: #eff6ff;
+    border: 1px solid #dbeafe;
+    border-radius: 6px;
+    padding: 4px 10px;
+    color: #1e40af;
+    font-weight: 600;
+}
+
+QFrame#sectionCard {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+}
+
+QLabel#sectionTitle {
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    padding: 0;
+    color: #111827;
+    font-size: 15px;
+    font-weight: 600;
+}
+
+QPushButton {
+    background: #ffffff;
+    border: 1px solid #d7dce2;
+    border-radius: 6px;
+    color: #374151;
+    min-height: 18px;
+    padding: 4px 12px;
+}
+
+QPushButton:hover {
+    background: #ffffff;
+    border-color: #d7dce2;
+    color: #2563eb;
+}
+
+QPushButton:pressed {
+    background: #eff6ff;
+    border-color: #d7dce2;
+    color: #2563eb;
+}
+
+QPushButton:disabled {
+    background: #f3f4f6;
+    border-color: #e5e7eb;
+    color: #9ca3af;
+}
+
+QPushButton[role="primary"] {
+    background: #2563eb;
+    border-color: #2563eb;
+    color: #ffffff;
+    font-weight: 600;
+}
+
+QPushButton[role="primary"]:hover {
+    background: #3b82f6;
+    border-color: #3b82f6;
+    color: #ffffff;
+}
+
+QPushButton[role="quiet"] {
+    background: transparent;
+}
+
+QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox {
+    background: #ffffff;
+    border: 1px solid #d7dce2;
+    border-radius: 6px;
+    min-height: 20px;
+    padding: 4px 10px;
+    selection-background-color: #dbeafe;
+    selection-color: #1e3a8a;
+}
+
+QLineEdit:hover, QComboBox:hover, QSpinBox:hover, QDoubleSpinBox:hover {
+    border-color: #9ca3af;
+}
+
+QLineEdit:focus, QComboBox:focus, QSpinBox:focus, QDoubleSpinBox:focus {
+    border: 1px solid #3b82f6;
+}
+
+QComboBox {
+    padding-right: 34px;
+}
+
+QComboBox:on {
+    border-color: #3b82f6;
+}
+
+QComboBox[popupOpen="true"] {
+    border-color: #3b82f6;
+}
+
+QComboBox::drop-down {
+    background: transparent;
+    border: none;
+    width: 30px;
+}
+
+QComboBox[compact="true"] {
+    padding-left: 8px;
+    padding-right: 24px;
+}
+
+QComboBox[compact="true"]::drop-down {
+    width: 22px;
+}
+
+QComboBox::down-arrow {
+    image: url(__CHEVRON_DOWN__);
+    width: 9px;
+    height: 9px;
+}
+
+QComboBox::down-arrow:on {
+    image: url(__CHEVRON_UP__);
+}
+
+QComboBox[popupOpen="true"]::down-arrow {
+    image: url(__CHEVRON_UP__);
+}
+
+QComboBox QAbstractItemView {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    outline: 0;
+    padding: 6px;
+    selection-background-color: #eff6ff;
+    selection-color: #2563eb;
+}
+
+QComboBox QAbstractItemView::item {
+    min-height: 30px;
+    padding: 6px 10px;
+}
+
+QComboBox QAbstractItemView::item:hover {
+    background: #f8fafc;
+    color: #2563eb;
+}
+
+QComboBox QAbstractItemView::item:selected {
+    background: #eff6ff;
+    color: #2563eb;
+}
+
+QFrame#modernComboWindow {
+    background: transparent;
+    border: none;
+}
+
+QFrame#modernComboPopup {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+}
+
+#modernComboList {
+    background: transparent;
+    border: none;
+    outline: none;
+    padding: 4px 0;
+}
+
+#modernComboList::item {
+    border: none;
+    border-radius: 0;
+    padding: 0 10px;
+}
+
+#modernComboList::item:hover {
+    background: #f1f5f9;
+    color: #2563eb;
+}
+
+#modernComboList::item:selected {
+    background: #eff6ff;
+    color: #2563eb;
+}
+
+QCheckBox {
+    spacing: 7px;
+}
+
+QTableWidget {
+    background: #ffffff;
+    alternate-background-color: #fafafa;
+    border: 1px solid #e5e7eb;
+    border-radius: 9px;
+    gridline-color: transparent;
+    selection-background-color: #eff6ff;
+    selection-color: #1e3a8a;
+}
+
+QHeaderView::section {
+    background: #f9fafb;
+    border: none;
+    border-bottom: 1px solid #e5e7eb;
+    color: #4b5563;
+    font-weight: 600;
+    padding: 9px 8px;
+}
+
+QTableCornerButton::section {
+    background: #f9fafb;
+    border: none;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+QTableWidget#mappingTable {
+    border-radius: 8px;
+}
+
+QTableWidget#mappingTable QHeaderView {
+    background: transparent;
+    border: none;
+}
+
+QTableWidget#mappingTable QHeaderView::section:first {
+    border-top-left-radius: 8px;
+}
+
+QTableWidget#mappingTable QHeaderView::section:last {
+    border-top-right-radius: 8px;
+}
+
+QScrollBar:vertical {
+    background: transparent;
+    width: 10px;
+    margin: 2px;
+}
+
+QScrollBar::handle:vertical {
+    background: #cbd0d6;
+    border-radius: 4px;
+    min-height: 28px;
+}
+
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    height: 0;
+}
+
+QProgressBar {
+    background: #f3f4f6;
+    border: none;
+    border-radius: 6px;
+    min-height: 12px;
+    text-align: center;
+}
+
+QProgressBar::chunk {
+    background: #2563eb;
+    border-radius: 6px;
+}
+
+QDialog {
+    background: #f5f6f8;
+}
+"""
 
 
 def _version_key(version):
@@ -36,19 +336,33 @@ def _app_base_dir():
         return pathlib.Path(sys._MEIPASS)
     return pathlib.Path(__file__).resolve().parent
 
+
+def _app_style_sheet():
+    """生成开发环境和打包环境都可用的主题样式。"""
+    arrow_path = (_app_base_dir() / "assets" / "chevron-down.xpm").as_posix()
+    arrow_up_path = (_app_base_dir() / "assets" / "chevron-up.xpm").as_posix()
+    return (
+        APP_STYLE_SHEET
+        .replace("__CHEVRON_DOWN__", arrow_path)
+        .replace("__CHEVRON_UP__", arrow_up_path)
+    )
+
 # 禁用 PyQt5 的 DeprecationWarning
 warnings.filterwarnings('ignore', category=DeprecationWarning)
 
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QPushButton, QFileDialog, QTableWidget, QTableWidgetItem, QTabWidget,
-    QLabel, QComboBox, QSpinBox, QDoubleSpinBox, QMessageBox, QProgressBar,
-    QTextEdit, QSplitter, QHeaderView, QStatusBar, QDialog, QGridLayout,
-    QSpacerItem, QSizePolicy, QStackedWidget, QLineEdit, QButtonGroup, QInputDialog, QCheckBox,
-    QScrollArea, QGroupBox
+    QPushButton, QFileDialog, QTableWidget, QTableWidgetItem,
+    QLabel, QComboBox, QSpinBox, QMessageBox, QProgressBar,
+    QTextEdit, QHeaderView, QDialog, QGridLayout, QLineEdit, QInputDialog,
+    QCheckBox, QScrollArea, QGroupBox, QFrame, QListWidget, QListWidgetItem,
+    QAbstractItemView, QSizePolicy
 )
-from PyQt5.QtCore import Qt, QThread, pyqtSignal, QSize, QTimer
-from PyQt5.QtGui import QFont, QColor, QIcon, QPixmap, QPainter
+from PyQt5.QtCore import (
+    Qt, QThread, pyqtSignal, QSize, QTimer, QObject, QEvent, QPoint,
+    QVariantAnimation, QEasingCurve
+)
+from PyQt5.QtGui import QFont, QColor, QIcon
 from main.common.config import ConfigManager
 import webbrowser
 from main.label.label_generator import LabelGenerator
@@ -59,6 +373,249 @@ from main.label.carton_mark_generator import (
 )
 
 
+class PointerCursorFilter(QObject):
+    """统一按钮手型光标和 160ms 悬停颜色过渡。"""
+
+    ANIMATION_DURATION = 160
+    NORMAL_TEXT_COLOR = QColor("#374151")
+    HOVER_TEXT_COLOR = QColor("#2563eb")
+    NORMAL_PRIMARY_COLOR = QColor("#2563eb")
+    HOVER_PRIMARY_COLOR = QColor("#3b82f6")
+
+    def _is_primary(self, button):
+        return button.property("role") == "primary"
+
+    def _normal_color(self, button):
+        if self._is_primary(button):
+            return QColor(self.NORMAL_PRIMARY_COLOR)
+        return QColor(self.NORMAL_TEXT_COLOR)
+
+    def _ensure_animation(self, button):
+        if hasattr(button, "_button_hover_animation"):
+            return
+        button._button_hover_color = self._normal_color(button)
+        animation = QVariantAnimation(button)
+        animation.setDuration(self.ANIMATION_DURATION)
+        animation.setEasingCurve(QEasingCurve.OutCubic)
+        animation.valueChanged.connect(
+            lambda color, target=button: self._apply_animated_color(target, color)
+        )
+        button._button_hover_animation = animation
+
+    def _apply_animated_color(self, button, color):
+        button._button_hover_color = QColor(color)
+        color_name = button._button_hover_color.name()
+        if self._is_primary(button):
+            button.setStyleSheet(
+                "QPushButton, QPushButton:hover {"
+                f"background: {color_name}; border-color: {color_name};"
+                "color: #ffffff; font-weight: 600;"
+                "}"
+                "QPushButton:pressed {"
+                "background: #2563eb; border-color: #2563eb; color: #ffffff;"
+                "}"
+                "QPushButton:disabled {"
+                "background: #f3f4f6; border-color: #e5e7eb; color: #9ca3af;"
+                "}"
+            )
+        else:
+            button.setStyleSheet(
+                "QPushButton, QPushButton:hover {"
+                f"color: {color_name};"
+                "}"
+                "QPushButton:pressed { color: #2563eb; }"
+                "QPushButton:disabled { color: #9ca3af; }"
+            )
+
+    def _animate_hover(self, button, hovering):
+        self._ensure_animation(button)
+        animation = button._button_hover_animation
+        animation.stop()
+        animation.setStartValue(button._button_hover_color)
+        if hovering:
+            target = (
+                self.HOVER_PRIMARY_COLOR
+                if self._is_primary(button)
+                else self.HOVER_TEXT_COLOR
+            )
+        else:
+            target = self._normal_color(button)
+        animation.setEndValue(target)
+        self._apply_animated_color(button, button._button_hover_color)
+        animation.start()
+
+    def eventFilter(self, obj, event):
+        if isinstance(obj, QPushButton):
+            event_type = event.type()
+            if event_type in (QEvent.Polish, QEvent.Show, QEvent.EnabledChange):
+                cursor = Qt.PointingHandCursor if obj.isEnabled() else Qt.ArrowCursor
+                obj.setCursor(cursor)
+            if event_type == QEvent.Enter and obj.isEnabled():
+                self._animate_hover(obj, True)
+            elif event_type == QEvent.Leave and obj.isEnabled():
+                self._animate_hover(obj, False)
+            elif event_type == QEvent.EnabledChange and hasattr(
+                obj, "_button_hover_animation"
+            ):
+                obj._button_hover_animation.stop()
+                normal_color = self._normal_color(obj)
+                self._apply_animated_color(obj, normal_color)
+        return super().eventFilter(obj, event)
+
+
+class ElidedLabel(QLabel):
+    """宽度不足时以省略号显示，并在悬停提示中保留完整文本。"""
+
+    def __init__(self, text="", parent=None):
+        super().__init__(parent)
+        self._full_text = ""
+        self.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
+        self.setMinimumWidth(0)
+        self.setText(text)
+
+    def setText(self, text):
+        self._full_text = str(text)
+        self._refresh_elided_text()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._refresh_elided_text()
+
+    def _refresh_elided_text(self):
+        available_width = max(0, self.contentsRect().width())
+        display_text = self.fontMetrics().elidedText(
+            self._full_text, Qt.ElideRight, available_width
+        )
+        super().setText(display_text)
+        self.setToolTip(self._full_text if display_text != self._full_text else "")
+
+
+def install_pointer_cursors(app):
+    """安装全局按钮光标行为，并由 QApplication 持有过滤器。"""
+    cursor_filter = PointerCursorFilter(app)
+    app.installEventFilter(cursor_filter)
+    app._pointer_cursor_filter = cursor_filter
+
+
+class ModernComboListWidget(QListWidget):
+    """始终按鼠标所在行更新高亮的下拉列表。"""
+
+    def mouseMoveEvent(self, event):
+        super().mouseMoveEvent(event)
+        item = self.itemAt(event.pos())
+        if item:
+            self.setCurrentItem(item)
+
+
+class ModernComboBox(QComboBox):
+    """使用自绘弹层的网页式下拉框，避免 Windows 原生菜单覆盖主题样式。"""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._modern_popup = None
+        self.setCursor(Qt.PointingHandCursor)
+
+    def _set_popup_state(self, is_open):
+        self.setProperty("popupOpen", is_open)
+        self.style().unpolish(self)
+        self.style().polish(self)
+        self.update()
+
+    def showPopup(self):
+        if self.count() == 0:
+            return
+        if self._modern_popup:
+            if self._modern_popup.isVisible():
+                return
+            self._modern_popup.deleteLater()
+            self._modern_popup = None
+
+        popup = QFrame(None, Qt.Popup | Qt.FramelessWindowHint | Qt.NoDropShadowWindowHint)
+        popup.setObjectName("modernComboWindow")
+        popup.setAttribute(Qt.WA_TranslucentBackground, True)
+        popup.setAttribute(Qt.WA_DeleteOnClose, True)
+
+        popup_layout = QVBoxLayout(popup)
+        popup_layout.setContentsMargins(0, 0, 0, 0)
+        popup_layout.setSpacing(0)
+
+        popup_panel = QFrame(popup)
+        popup_panel.setObjectName("modernComboPopup")
+        popup_panel.setAttribute(Qt.WA_StyledBackground, True)
+        panel_layout = QVBoxLayout(popup_panel)
+        panel_layout.setContentsMargins(1, 1, 1, 1)
+        panel_layout.setSpacing(0)
+        popup_layout.addWidget(popup_panel)
+
+        option_list = ModernComboListWidget(popup_panel)
+        option_list.setObjectName("modernComboList")
+        option_list.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        max_visible_items = 8
+        option_list.setVerticalScrollBarPolicy(
+            Qt.ScrollBarAsNeeded if self.count() > max_visible_items else Qt.ScrollBarAlwaysOff
+        )
+        option_list.setMouseTracking(True)
+        option_list.viewport().setMouseTracking(True)
+        option_list.viewport().setAttribute(Qt.WA_Hover, True)
+        option_list.setCursor(Qt.PointingHandCursor)
+
+        for index in range(self.count()):
+            item = QListWidgetItem(self.itemText(index))
+            item.setData(Qt.UserRole, index)
+            item.setSizeHint(QSize(0, 34))
+            option_list.addItem(item)
+
+        option_list.setCurrentRow(self.currentIndex())
+        option_list.itemPressed.connect(self._select_popup_item)
+        option_list.itemActivated.connect(self._select_popup_item)
+        panel_layout.addWidget(option_list)
+
+        visible_items = min(self.count(), max_visible_items)
+        popup_height = visible_items * 34 + 12
+        popup.setFixedSize(self.width(), popup_height)
+        popup_position = self.mapToGlobal(QPoint(0, self.height() + 4))
+        available_screen = QApplication.desktop().availableGeometry(self)
+        if popup_position.y() + popup_height > available_screen.bottom():
+            popup_position = self.mapToGlobal(QPoint(0, -popup_height - 4))
+        popup.move(popup_position)
+
+        self._modern_popup = popup
+        popup_token = id(popup)
+        popup.destroyed.connect(
+            lambda _object=None, token=popup_token: self._on_popup_destroyed(token)
+        )
+        self._set_popup_state(True)
+        popup.show()
+        popup.raise_()
+        if self.count() <= max_visible_items:
+            option_list.scrollToTop()
+        else:
+            option_list.scrollToItem(
+                option_list.currentItem(), QAbstractItemView.PositionAtCenter
+            )
+        option_list.setFocus()
+
+    def _select_popup_item(self, item):
+        index = item.data(Qt.UserRole)
+        if index is not None:
+            self.setCurrentIndex(index)
+        # 等当前鼠标事件处理结束后再销毁弹层，避免 Windows/Qt 在
+        # itemClicked 回调中删除 QListWidget 导致进程异常退出。
+        QTimer.singleShot(0, self.hidePopup)
+
+    def _on_popup_destroyed(self, popup_token):
+        if self._modern_popup and id(self._modern_popup) == popup_token:
+            self._modern_popup = None
+            self._set_popup_state(False)
+
+    def hidePopup(self):
+        if self._modern_popup:
+            popup = self._modern_popup
+            self._modern_popup = None
+            self._set_popup_state(False)
+            popup.close()
+        else:
+            self._set_popup_state(False)
 
 
 class ExportThread(QThread):
@@ -282,6 +839,8 @@ def _do_inapp_download_and_update(parent, download_url, version):
     dlg.setWindowTitle("下载更新")
     dlg.setMinimumWidth(360)
     layout = QVBoxLayout(dlg)
+    layout.setContentsMargins(16, 16, 16, 16)
+    layout.setSpacing(8)
     label = QLabel("正在下载...")
     layout.addWidget(label)
     progress = QProgressBar()
@@ -343,6 +902,8 @@ class PropellerFilenameDialog(QDialog):
         self.existing_filenames = existing_filenames  # 已有的文件名集合
         
         layout = QVBoxLayout()
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(8)
         
         # 标签
         label = QLabel("请为以下螺旋桨输入文件名：")
@@ -384,6 +945,8 @@ class PropellerFilenameDialog(QDialog):
         layout.addLayout(button_layout)
         
         self.setLayout(layout)
+        self.adjustSize()
+        self.setFixedSize(self.size())
     
     def validate_and_accept(self):
         """验证输入，检查是否有重名"""
@@ -442,18 +1005,16 @@ class PropellerFilenameDialog(QDialog):
         return result
 
 
-class KeywordAnalyzerGUI(QMainWindow):
-    """关键词分析工具 GUI"""
+class SupplierLabelGeneratorWindow(QMainWindow):
+    """京东供应商标签与箱唛生成器主窗口。"""
     
     def __init__(self):
         super().__init__()
         self.config_manager = ConfigManager()
         
         self.setWindowTitle(APP_NAME)
-        
-        # 设置固定窗口大小
-        self.setFixedSize(900, 600)
-        self.setGeometry(100, 100, 900, 600)
+        self.setObjectName("mainWindow")
+        self.setFixedSize(420, 492)
         
         # Excel导入相关
         self.current_excel_file = None
@@ -464,9 +1025,6 @@ class KeywordAnalyzerGUI(QMainWindow):
         
         # 品牌-工作表规则关系
         self.sheet_rules = self.load_sheet_rules()
-        
-        # 记住上次打开的文件路径
-        self.last_file_path = self.config_manager.get('last_csv_path', os.path.expanduser('~/Desktop'))
         
         # 应用版本和导出路径
         self.app_version = APP_VERSION
@@ -479,68 +1037,12 @@ class KeywordAnalyzerGUI(QMainWindow):
     
     def init_ui(self):
         """初始化 UI"""
-        # 创建中央 widget
         central_widget = QWidget()
+        central_widget.setObjectName("appRoot")
         self.setCentralWidget(central_widget)
-        
-        # 主布局（水平）
-        main_layout = QHBoxLayout()
-        
-        # 侧边栏
-        sidebar_layout = QVBoxLayout()
-        sidebar_layout.setSpacing(10)
-        
-        # 工具按钮 - 使用互斥按钮组
-        self.button_group = QButtonGroup()
-        
-        self.label_btn = QPushButton("标签箱唛")
-        self.label_btn.setCheckable(True)
-        self.label_btn.setChecked(True)
-        self.label_btn.clicked.connect(lambda: self.switch_tool("label"))
-        self.button_group.addButton(self.label_btn, 0)
-        sidebar_layout.addWidget(self.label_btn)
-        
-        self.video_btn = QPushButton("种草视频")
-        self.video_btn.setCheckable(True)
-        self.video_btn.clicked.connect(lambda: self.switch_tool("video"))
-        self.button_group.addButton(self.video_btn, 1)
-        sidebar_layout.addWidget(self.video_btn)
-        
-        sidebar_layout.addStretch()
-        
-        # 设置按钮
-        settings_btn = QPushButton("设置")
-        settings_btn.clicked.connect(self.show_app_settings)
-        sidebar_layout.addWidget(settings_btn)
-        
-        # 侧边栏容器
-        sidebar_widget = QWidget()
-        sidebar_widget.setLayout(sidebar_layout)
-        sidebar_widget.setFixedWidth(100)
-        
-        main_layout.addWidget(sidebar_widget)
-        
-        # 工具容器（堆栈）
-        self.tool_stack = QStackedWidget()
-        
-        # 标签箱唛工具页面
-        label_widget = self.create_label_tool()
-        self.tool_stack.addWidget(label_widget)
-        
-        # 种草助手页面
-        video_widget = self.create_video_tool()
-        self.tool_stack.addWidget(video_widget)
-        
-        main_layout.addWidget(self.tool_stack)
-        
-        central_widget.setLayout(main_layout)
-    
-    def switch_tool(self, tool_name):
-        """切换工具"""
-        if tool_name == "label":
-            self.tool_stack.setCurrentIndex(0)
-        elif tool_name == "video":
-            self.tool_stack.setCurrentIndex(1)
+        main_layout = QVBoxLayout(central_widget)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.addWidget(self.create_label_tool())
     
     def show_app_settings(self):
         """显示应用设置对话框"""
@@ -600,11 +1102,6 @@ class KeywordAnalyzerGUI(QMainWindow):
             
             # 加载Excel文件，使用 data_only=True 显示公式的计算结果
             workbook = openpyxl.load_workbook(file_path, data_only=True)
-            sheet_names = workbook.sheetnames
-            
-            # 只显示文件名
-            preview_text = file_name
-            
             # 从文件名中检测类型
             detected_type = ""
             if "3C" in file_name_without_ext or "3c" in file_name_without_ext:
@@ -632,18 +1129,6 @@ class KeywordAnalyzerGUI(QMainWindow):
             self.current_excel_file = file_path
             self.current_excel_workbook = workbook
             
-            # 填充工作表选择器
-            self.sheet_combo.blockSignals(True)
-            self.sheet_combo.clear()
-            self.sheet_combo.addItems(sheet_names)
-            self.sheet_combo.blockSignals(False)
-            
-            # 默认选择第一个工作表
-            if sheet_names:
-                self.sheet_combo.setCurrentIndex(0)
-                # 手动触发工作表改变事件以显示数据
-                self.on_sheet_changed(sheet_names[0])
-            
             print(f"[DEBUG] import_excel_file: detected_type={detected_type}")
             print(f"[DEBUG] sheet_mapping keys: {list(self.sheet_mapping.keys())}")
             print(f"[DEBUG] workbook.sheetnames: {workbook.sheetnames}")
@@ -662,9 +1147,26 @@ class KeywordAnalyzerGUI(QMainWindow):
             
             # 更新文件名标签
             self.file_name_label.setText(f"已加载: {file_name}")
+            self.open_excel_btn.setEnabled(True)
             
         except Exception as e:
             QMessageBox.critical(self, "错误", f"导入Excel文件失败: {str(e)}")
+
+    def open_excel_file(self):
+        """使用系统默认的表格软件打开当前工作表文件。"""
+        if not self.current_excel_file or not os.path.isfile(self.current_excel_file):
+            QMessageBox.warning(self, "提示", "请先导入工作表文件")
+            return
+
+        try:
+            if sys.platform == "win32":
+                os.startfile(self.current_excel_file)
+            else:
+                import subprocess
+                command = ["open", self.current_excel_file] if sys.platform == "darwin" else ["xdg-open", self.current_excel_file]
+                subprocess.Popen(command)
+        except OSError as exc:
+            QMessageBox.critical(self, "打开失败", f"无法打开工作表文件：{exc}")
     
     def extract_date_from_workbook(self, workbook, label_type):
         """从工作表中识别日期和年份，检查所有映射工作表的日期是否一致"""
@@ -1091,492 +1593,132 @@ class KeywordAnalyzerGUI(QMainWindow):
         pass
     
     
-    def create_video_tool(self):
-        """创建种草助手（视频封面提取）工具页面"""
-        widget = QWidget()
-        layout = QVBoxLayout()
-        layout.setSpacing(10)
-        layout.setContentsMargins(10, 10, 10, 10)
-        
-        # 上方按钮区域
-        button_layout = QHBoxLayout()
-        button_layout.setSpacing(10)
-        
-        import_btn = QPushButton("导入")
-        import_btn.clicked.connect(self.import_video_files)
-        button_layout.addWidget(import_btn)
-        
-        import_folder_btn = QPushButton("导入文件夹")
-        import_folder_btn.clicked.connect(self.import_video_folder)
-        button_layout.addWidget(import_folder_btn)
-        
-        clear_btn = QPushButton("清空列表")
-        clear_btn.clicked.connect(self.clear_video_files)
-        button_layout.addWidget(clear_btn)
-        
-        button_layout.addStretch()
-        
-        export_table_btn = QPushButton("导出表格")
-        export_table_btn.clicked.connect(self.export_video_table)
-        button_layout.addWidget(export_table_btn)
-        
-        export_cover_btn = QPushButton("导出封面")
-        export_cover_btn.clicked.connect(self.export_video_covers)
-        button_layout.addWidget(export_cover_btn)
-        
-        layout.addLayout(button_layout)
-        
-        # 视频文件列表
-        self.video_files_table = QTableWidget()
-        self.video_files_table.setColumnCount(2)
-        self.video_files_table.setHorizontalHeaderLabels(["文件夹名称", "视频标题"])
-        self.video_files_table.horizontalHeader().setStretchLastSection(True)
-        self.video_files_table.setColumnWidth(0, 150)
-        self.video_files_table.verticalHeader().setVisible(False)  # 隐藏行号
-        layout.addWidget(self.video_files_table)
-        
-        # 文件信息标签（类似标签箱唛工具）
-        file_info_layout = QHBoxLayout()
-        file_info_layout.setContentsMargins(0, 5, 0, 3)
-        file_info_layout.setSpacing(0)
-        
-        self.video_info_label = QLabel("未加载数据")
-        self.video_info_label.setFont(QFont("Arial", 9))
-        file_info_layout.addWidget(self.video_info_label)
-        file_info_layout.addStretch()
-        
-        layout.addLayout(file_info_layout)
-        
-        # 存储视频文件列表
-        self.video_files_list = []
-        
-        widget.setLayout(layout)
-        return widget
-    
-    def import_video_files(self):
-        """导入视频文件"""
-        import os
-        from PyQt5.QtWidgets import QFileDialog
-        
-        file_paths, _ = QFileDialog.getOpenFileNames(
-            self,
-            "选择视频文件",
-            "",
-            "视频文件 (*.mp4 *.avi *.mov *.mkv *.flv *.wmv *.webm *.m4v *.3gp *.ts);;所有文件 (*)"
-        )
-        
-        if not file_paths:
-            return
-        
-        video_extensions = ('.mp4', '.avi', '.mov', '.mkv', '.flv', '.wmv', '.webm', '.m4v', '.3gp', '.ts')
-        
-        for file_path in file_paths:
-            if file_path.lower().endswith(video_extensions):
-                if file_path not in self.video_files_list:
-                    self.video_files_list.append(file_path)
-        
-        # 刷新表格
-        self.refresh_video_files_table()
-    
-    def import_video_folder(self):
-        """导入视频文件夹"""
-        import os
-        from PyQt5.QtWidgets import QFileDialog
-        
-        folder_path = QFileDialog.getExistingDirectory(
-            self,
-            "选择包含视频文件的文件夹"
-        )
-        
-        if not folder_path:
-            return
-        
-        video_extensions = ('.mp4', '.avi', '.mov', '.mkv', '.flv', '.wmv', '.webm', '.m4v', '.3gp', '.ts')
-        
-        # 递归扫描文件夹中的所有视频文件
-        for root, dirs, files in os.walk(folder_path):
-            for file in files:
-                # 跳过 macOS 资源分叉文件
-                if file.startswith('._'):
-                    continue
-                
-                if file.lower().endswith(video_extensions):
-                    file_path = os.path.join(root, file)
-                    if file_path not in self.video_files_list:
-                        self.video_files_list.append(file_path)
-        
-        # 刷新表格
-        self.refresh_video_files_table()
-    
-    def clear_video_files(self):
-        """清空视频文件列表"""
-        if not self.video_files_list:
-            QMessageBox.information(self, "提示", "列表已为空")
-            return
-        
-        reply = QMessageBox.question(
-            self, 
-            "确认清空", 
-            f"确定要清空列表中的 {len(self.video_files_list)} 个文件吗？",
-            QMessageBox.Yes | QMessageBox.No
-        )
-        
-        if reply == QMessageBox.Yes:
-            self.video_files_list.clear()
-            self.refresh_video_files_table()
-    
-    def refresh_video_files_table(self):
-        """刷新视频文件表格"""
-        self.video_files_table.setRowCount(0)
-        
-        import os
-        for idx, file_path in enumerate(self.video_files_list):
-            self.video_files_table.insertRow(idx)
-            
-            # 文件夹名称（上级文件夹）
-            folder_name = os.path.basename(os.path.dirname(file_path))
-            folder_item = QTableWidgetItem(folder_name)
-            self.video_files_table.setItem(idx, 0, folder_item)
-            
-            # 视频标题（文件名不含扩展名）
-            video_name = os.path.splitext(os.path.basename(file_path))[0]
-            title_item = QTableWidgetItem(video_name)
-            self.video_files_table.setItem(idx, 1, title_item)
-        
-        # 更新信息标签
-        if self.video_files_list:
-            self.video_info_label.setText(f"已加载: {len(self.video_files_list)} 个视频文件")
-        else:
-            self.video_info_label.setText("未加载数据")
-    
-    def export_video_table(self):
-        """导出视频表格为Excel"""
-        if not self.video_files_list:
-            QMessageBox.warning(self, "警告", "请先导入视频文件")
-            return
-        
-        try:
-            import openpyxl
-        except ImportError:
-            QMessageBox.warning(self, "警告", "需要安装openpyxl库。请运行: pip install openpyxl")
-            return
-        
-        # 选择保存位置（用 save_path 避免被循环变量覆盖）
-        save_path, _ = QFileDialog.getSaveFileName(
-            self, "保存表格", "", "Excel文件 (*.xlsx);;所有文件 (*)"
-        )
-        
-        if not save_path:
-            return
-        
-        try:
-            # 创建工作簿
-            workbook = openpyxl.Workbook()
-            worksheet = workbook.active
-            worksheet.title = "视频列表"
-            
-            # 写入表头
-            worksheet['A1'] = "文件夹名称"
-            worksheet['B1'] = "视频标题"
-            
-            # 写入数据
-            import os
-            for idx, video_file_path in enumerate(self.video_files_list, start=2):
-                folder_name = os.path.basename(os.path.dirname(video_file_path))
-                video_name = os.path.splitext(os.path.basename(video_file_path))[0]
-                
-                worksheet[f'A{idx}'] = folder_name
-                worksheet[f'B{idx}'] = video_name
-            
-            # 调整列宽
-            worksheet.column_dimensions['A'].width = 20
-            worksheet.column_dimensions['B'].width = 30
-            
-            # 保存到用户选择的路径
-            workbook.save(save_path)
-            
-            QMessageBox.information(self, "成功", f"表格已导出到: {save_path}")
-        
-        except Exception as e:
-            QMessageBox.critical(self, "错误", f"导出表格失败: {str(e)}")
-    
-    def export_video_covers(self):
-        """导出视频封面"""
-        if not self.video_files_list:
-            QMessageBox.warning(self, "警告", "请先导入视频文件")
-            return
-        
-        try:
-            import os
-            from main.video.cover_extractor import VideoCoverExtractor
-            
-            # 使用全局导出路径，在其下创建 "视频封面" 文件夹
-            output_folder = os.path.join(self.export_path, "视频封面")
-            
-            # 创建文件夹
-            os.makedirs(output_folder, exist_ok=True)
-            
-            success_count = 0
-            failed_count = 0
-            error_messages = []
-            
-            for idx, video_path in enumerate(self.video_files_list):
-                try:
-                    # 获取视频文件名（不含扩展名）
-                    video_name = os.path.splitext(os.path.basename(video_path))[0]
-                    
-                    # 输出图片路径
-                    output_image = os.path.join(output_folder, f"{video_name}.jpg")
-                    
-                    # 提取封面
-                    if VideoCoverExtractor.extract_cover(video_path, output_image):
-                        success_count += 1
-                    else:
-                        failed_count += 1
-                        error_messages.append(f"无法提取: {video_name}")
-                
-                except Exception as e:
-                    print(f"[ERROR] 处理视频失败: {video_path}, {str(e)}")
-                    failed_count += 1
-                    error_messages.append(f"错误: {video_name} - {str(e)}")
-            
-            # 显示结果
-            result_msg = f"成功: {success_count} 个\n失败: {failed_count} 个\n\n保存位置: {output_folder}"
-            
-            if failed_count > 0:
-                if failed_count <= 5:
-                    result_msg += "\n\n失败原因:\n" + "\n".join(error_messages[:5])
-                else:
-                    result_msg += "\n\n失败原因 (前5个):\n" + "\n".join(error_messages[:5])
-                    result_msg += f"\n... 还有 {failed_count - 5} 个失败"
-                
-                # 如果全部失败，显示详细错误
-                if success_count == 0:
-                    result_msg += "\n\n提示: 请确保已安装 ffmpeg\n"
-                    result_msg += "macOS: brew install ffmpeg\n"
-                    result_msg += "Windows: https://ffmpeg.org/download.html"
-            
-            QMessageBox.information(self, "导出完成", result_msg)
-        
-        except ImportError:
-            QMessageBox.warning(
-                self, 
-                "错误", 
-                "需要安装 ffmpeg。\n\n"
-                "macOS: brew install ffmpeg\n"
-                "Windows: https://ffmpeg.org/download.html"
-            )
-        except Exception as e:
-            QMessageBox.critical(self, "错误", f"导出失败: {str(e)}")
-    
     def create_label_tool(self):
         """创建标签箱唛工具页面"""
         widget = QWidget()
-        layout = QVBoxLayout()
-        layout.setSpacing(10)
-        layout.setContentsMargins(10, 10, 10, 10)
-        
-        # 第一行：导入按钮和工作表选择
-        top_layout = QHBoxLayout()
-        top_layout.setContentsMargins(0, 0, 0, 0)
-        top_layout.setSpacing(10)
-        
-        import_excel_btn = QPushButton("导入")
+        widget.setObjectName("workspace")
+        layout = QVBoxLayout(widget)
+        layout.setSpacing(16)
+        layout.setContentsMargins(16, 16, 16, 16)
+
+        data_group = QFrame()
+        data_group.setObjectName("sectionCard")
+        data_card_layout = QVBoxLayout(data_group)
+        data_card_layout.setContentsMargins(16, 16, 16, 16)
+        data_card_layout.setSpacing(12)
+        data_title = QLabel("工作区")
+        data_title.setObjectName("sectionTitle")
+        data_card_layout.addWidget(data_title, 0, Qt.AlignLeft)
+
+        data_layout = QGridLayout()
+        data_layout.setContentsMargins(0, 0, 0, 0)
+        data_layout.setHorizontalSpacing(8)
+        data_layout.setVerticalSpacing(8)
+
+        self.file_name_label = ElidedLabel("尚未导入工作表文件")
+        self.file_name_label.setObjectName("mutedText")
+        data_layout.addWidget(self.file_name_label, 0, 0)
+
+        app_settings_btn = QPushButton("应用设置")
+        app_settings_btn.setProperty("role", "quiet")
+        app_settings_btn.clicked.connect(self.show_app_settings)
+        data_layout.addWidget(app_settings_btn, 0, 1)
+
+        import_excel_btn = QPushButton("导入 Excel")
         import_excel_btn.clicked.connect(self.import_excel_file)
-        top_layout.addWidget(import_excel_btn)
-        
-        top_layout.addSpacing(10)
-        
-        # 工作表选择
-        top_layout.addWidget(QLabel("工作表:"))
-        self.sheet_combo = QComboBox()
-        self.sheet_combo.addItem("未加载数据")
-        self.sheet_combo.setMinimumWidth(150)
-        self.sheet_combo.currentTextChanged.connect(self.on_sheet_changed)
-        top_layout.addWidget(self.sheet_combo)
-        
-        top_layout.addStretch()
-        
+        data_layout.addWidget(import_excel_btn, 1, 0)
+
+        self.open_excel_btn = QPushButton("打开工作表文件")
+        self.open_excel_btn.setEnabled(False)
+        self.open_excel_btn.clicked.connect(self.open_excel_file)
+        data_layout.addWidget(self.open_excel_btn, 1, 1)
+
         add_label_btn = QPushButton("新增标签")
         add_label_btn.clicked.connect(self.show_label_dialog)
-        top_layout.addWidget(add_label_btn)
-        
+        data_layout.addWidget(add_label_btn, 2, 0)
+
         add_box_btn = QPushButton("新增箱唛")
         add_box_btn.clicked.connect(self.show_box_dialog)
-        top_layout.addWidget(add_box_btn)
-        
-        settings_btn = QPushButton("设置")
-        settings_btn.clicked.connect(self.show_sheet_mapping_dialog)
-        top_layout.addWidget(settings_btn)
-        
-        export_btn = QPushButton("导出")
+        data_layout.addWidget(add_box_btn, 2, 1)
+
+        mapping_settings_btn = QPushButton("工作表设置")
+        mapping_settings_btn.clicked.connect(self.show_sheet_mapping_dialog)
+        data_layout.addWidget(mapping_settings_btn, 3, 0)
+
+        export_btn = QPushButton("导出文件")
+        export_btn.setProperty("role", "primary")
         export_btn.clicked.connect(self.export_label_box)
-        top_layout.addWidget(export_btn)
-        
-        layout.addLayout(top_layout)
-        
-        # 预览下方的选项
-        preview_options_layout = QHBoxLayout()
-        preview_options_layout.setContentsMargins(0, 0, 0, 0)
-        preview_options_layout.setSpacing(10)
-        
-        # 类型选择
-        preview_options_layout.addWidget(QLabel("类型:"))
-        self.preview_type_combo = QComboBox()
+        data_layout.addWidget(export_btn, 3, 1)
+        data_layout.setColumnStretch(0, 1)
+        data_layout.setColumnStretch(1, 1)
+        data_card_layout.addLayout(data_layout)
+        layout.addWidget(data_group)
+
+        options_group = QFrame()
+        options_group.setObjectName("sectionCard")
+        options_card_layout = QVBoxLayout(options_group)
+        options_card_layout.setContentsMargins(16, 16, 16, 16)
+        options_card_layout.setSpacing(12)
+        options_title = QLabel("生成选项")
+        options_title.setObjectName("sectionTitle")
+        options_card_layout.addWidget(options_title, 0, Qt.AlignLeft)
+
+        options_layout = QGridLayout()
+        options_layout.setContentsMargins(0, 0, 0, 0)
+        options_layout.setHorizontalSpacing(8)
+        options_layout.setVerticalSpacing(8)
+
+        options_layout.addWidget(QLabel("类型"), 0, 0)
+        self.preview_type_combo = ModernComboBox()
         self.preview_type_combo.addItems(["3C", "玩具"])
-        self.preview_type_combo.setCurrentText("3C")  # 默认显示 3C
-        self.preview_type_combo.setMinimumWidth(80)
-        self.preview_type_combo.setMaximumWidth(80)
-        preview_options_layout.addWidget(self.preview_type_combo)
-        
-        preview_options_layout.addSpacing(10)  # 四组之间的间距
-        
-        # 年份
-        preview_options_layout.addWidget(QLabel("年份:"))
+        self.preview_type_combo.setCurrentText("3C")
+        options_layout.addWidget(self.preview_type_combo, 0, 1)
+
+        options_layout.addWidget(QLabel("年份"), 1, 0)
         self.export_year_input = QLineEdit()
         self.export_year_input.setPlaceholderText("YYYY")
-        self.export_year_input.setMaximumWidth(80)
         import datetime
         current_year = datetime.datetime.now().year
         self.export_year_input.setText(str(current_year))
-        preview_options_layout.addWidget(self.export_year_input)
-        
-        preview_options_layout.addSpacing(10)  # 四组之间的间距
-        
-        # 日期
-        preview_options_layout.addWidget(QLabel("日期:"))
+        options_layout.addWidget(self.export_year_input, 1, 1)
+
+        options_layout.addWidget(QLabel("日期"), 2, 0)
         self.export_date_input = QLineEdit()
         self.export_date_input.setPlaceholderText("MMDD")
-        self.export_date_input.setMinimumWidth(80)
-        self.export_date_input.setMaximumWidth(80)
-        # 默认显示今天的日期
-        import datetime
         self.export_date_input.setText(datetime.datetime.now().strftime("%m%d"))
-        preview_options_layout.addWidget(self.export_date_input)
-        
-        preview_options_layout.addSpacing(10)  # 四组之间的间距
-        
-        # 输出内容复选框
-        preview_options_layout.addWidget(QLabel("输出内容:"))
-        
+        options_layout.addWidget(self.export_date_input, 2, 1)
+
+        options_layout.addWidget(QLabel("生成内容"), 3, 0)
+        output_layout = QHBoxLayout()
+        output_layout.setSpacing(18)
         self.output_label_checkbox = QCheckBox("标签")
         self.output_label_checkbox.setChecked(True)
-        preview_options_layout.addWidget(self.output_label_checkbox)
-        
+        output_layout.addWidget(self.output_label_checkbox)
+
         self.output_box_checkbox = QCheckBox("箱唛")
         self.output_box_checkbox.setChecked(True)
-        preview_options_layout.addWidget(self.output_box_checkbox)
-        
+        output_layout.addWidget(self.output_box_checkbox)
+
         self.output_order_checkbox = QCheckBox("预定表")
         self.output_order_checkbox.setChecked(False)
         self.output_order_checkbox.stateChanged.connect(self.on_order_checkbox_changed)
-        preview_options_layout.addWidget(self.output_order_checkbox)
-        
-        preview_options_layout.addStretch()  # 添加拉伸，让识别设置按钮居右
-        
-        # 识别设置按钮
+        output_layout.addWidget(self.output_order_checkbox)
+        output_layout.addStretch()
+        options_layout.addLayout(output_layout, 3, 1)
+
         recognize_settings_btn = QPushButton("识别设置")
         recognize_settings_btn.clicked.connect(self.show_recognize_settings_dialog)
-        preview_options_layout.addWidget(recognize_settings_btn)
-        
-        layout.addLayout(preview_options_layout)
-        
-        # 表格预览
-        self.excel_preview_table = QTableWidget()
-        self.excel_preview_table.setColumnCount(0)
-        layout.addWidget(self.excel_preview_table)
-        
-        # 导入文件名称显示
-        file_info_layout = QHBoxLayout()
-        file_info_layout.setContentsMargins(0, 5, 0, 3)
-        file_info_layout.setSpacing(0)
-        
-        self.file_name_label = QLabel("未加载数据")
-        self.file_name_label.setFont(QFont("Arial", 9))
-        file_info_layout.addWidget(self.file_name_label)
-        file_info_layout.addStretch()
-        
-        layout.addLayout(file_info_layout)
-        
-        widget.setLayout(layout)
+        options_layout.addWidget(recognize_settings_btn, 4, 1)
+        options_layout.setColumnStretch(1, 1)
+        options_card_layout.addLayout(options_layout)
+        layout.addWidget(options_group)
+        layout.addStretch(1)
         return widget
     
     def show_recognize_settings_dialog(self):
         """显示识别设置对话框"""
         dialog = RecognizeSettingsDialog(self)
         dialog.exec_()
-    
-    def on_sheet_changed(self, sheet_name):
-        """工作表改变时的处理"""
-        if not self.current_excel_workbook or not sheet_name:
-            return
-        
-        try:
-            worksheet = self.current_excel_workbook[sheet_name]
-            
-            # 获取最大列数
-            max_col = worksheet.max_column
-            
-            # 设置表格列数（预览时隐藏第1列“序号”，仅从第2列开始展示）
-            if max_col <= 1:
-                self.excel_preview_table.setColumnCount(max_col)
-            else:
-                self.excel_preview_table.setColumnCount(max_col - 1)
-            
-            # 设置表头（第一行），同样跳过第1列
-            headers = []
-            start_col = 2 if max_col > 1 else 1
-            for col in range(start_col, max_col + 1):
-                header_cell = worksheet.cell(1, col)
-                headers.append(str(header_cell.value) if header_cell.value else f"列{col}")
-            self.excel_preview_table.setHorizontalHeaderLabels(headers)
-            
-            # 清空表格数据
-            self.excel_preview_table.setRowCount(0)
-            
-            # 读取数据并填充表格（从第 2 行开始，最多显示 100 行）
-            for row_idx, row_num in enumerate(range(2, min(worksheet.max_row + 1, 102))):
-                self.excel_preview_table.insertRow(row_idx)
-                # 预览时不显示第1列“序号”，从第2列开始
-                start_col = 2 if max_col > 1 else 1
-                for col_idx in range(start_col, max_col + 1):
-                    cell = worksheet.cell(row_num, col_idx)
-                    value = cell.value
-                    item = QTableWidgetItem(str(value) if value else "")
-                    
-                    # 设置单元格背景颜色
-                    if cell.fill and cell.fill.start_color:
-                        try:
-                            color_value = cell.fill.start_color.rgb
-                            if color_value and color_value != '00000000':
-                                # 移除透明度前缀（如果有）
-                                if len(color_value) == 8:
-                                    color_value = color_value[2:]
-                                bg_color = QColor(f"#{color_value}")
-                                item.setBackground(bg_color)
-                        except:
-                            pass
-                    
-                    # 设置文字颜色
-                    if cell.font and cell.font.color:
-                        try:
-                            color_value = cell.font.color.rgb
-                            if color_value and color_value != '00000000':
-                                # 移除透明度前缀（如果有）
-                                if len(color_value) == 8:
-                                    color_value = color_value[2:]
-                                text_color = QColor(f"#{color_value}")
-                                item.setForeground(text_color)
-                        except:
-                            pass
-                    
-                    # 因为跳过了第1列，这里减去 start_col 作为列索引偏移
-                    self.excel_preview_table.setItem(row_idx, col_idx - start_col, item)
-            
-            # 自动适应列宽
-            self.excel_preview_table.resizeColumnsToContents()
-        except Exception as e:
-            print(f"[DEBUG] 工作表切换失败: {str(e)}")
     
     def on_order_checkbox_changed(self):
         """预定表复选框改变时的处理"""
@@ -2942,338 +3084,6 @@ class KeywordAnalyzerGUI(QMainWindow):
     
     
     def generate_box(self):
-        """创建工具栏"""
-        toolbar_layout = QHBoxLayout()
-        toolbar_layout.setContentsMargins(0, 0, 0, 0)
-        toolbar_layout.setSpacing(10)
-        
-        # 加载文件按钮
-        load_btn = QPushButton("导入")
-        load_btn.clicked.connect(self.load_file)
-        toolbar_layout.addWidget(load_btn)
-        
-        toolbar_layout.addSpacing(10)
-        
-        # 推广计划选择
-        toolbar_layout.addWidget(QLabel("推广计划:"))
-        self.plan_combo = QComboBox()
-        self.plan_combo.addItem("未加载数据")  # 初始化时添加默认项
-        self.plan_combo.setMinimumWidth(150)
-        self.plan_combo.currentTextChanged.connect(self.on_plan_changed)
-        toolbar_layout.addWidget(self.plan_combo)
-        
-        toolbar_layout.addStretch()
-        
-        # 设置按钮
-        settings_btn = QPushButton("设置")
-        settings_btn.clicked.connect(self.open_settings)
-        toolbar_layout.addWidget(settings_btn)
-        
-        # 导出按钮
-        export_btn = QPushButton("导出")
-        export_btn.clicked.connect(self.export_data)
-        toolbar_layout.addWidget(export_btn)
-        
-        return toolbar_layout
-    
-    def create_keywords_table(self):
-        """创建关键词分析表"""
-        self.keywords_table = QTableWidget()
-        self.keywords_table.setColumnCount(8)
-        self.keywords_table.setHorizontalHeaderLabels([
-            "关键词", "展现数", "花费", "点击率(%)", "转化率(%)", "订单数", "订单金额(¥)", "优化策略"
-        ])
-        
-        # 设置表格为只读
-        self.keywords_table.setEditTriggers(QTableWidget.NoEditTriggers)
-        
-        # 显示网格线
-        self.keywords_table.setShowGrid(True)
-        
-        # 隐藏序号列
-        self.keywords_table.verticalHeader().setVisible(False)
-        
-        # 设置列宽
-        header = self.keywords_table.horizontalHeader()
-        # 第1列（关键词）设置宽度
-        header.setSectionResizeMode(0, QHeaderView.Fixed)
-        self.keywords_table.setColumnWidth(0, 120)
-        
-        # 第2到第7列使用统一的固定宽度
-        for col in range(1, 7):
-            header.setSectionResizeMode(col, QHeaderView.Fixed)
-            self.keywords_table.setColumnWidth(col, 75)
-        
-        # 第8列（优化策略）自动拉伸
-        header.setSectionResizeMode(7, QHeaderView.Stretch)
-    
-    def load_file(self):
-        """加载 CSV 文件"""
-        file_path, _ = QFileDialog.getOpenFileName(
-            self, "选择关键词报表", self.last_file_path, "CSV 文件 (*.csv);;所有文件 (*)"
-        )
-        
-        if not file_path:
-            return
-        
-        # 保存文件所在的目录路径
-        self.last_file_path = os.path.dirname(file_path)
-        self.config_manager.set('last_csv_path', self.last_file_path)
-        self.config_manager.save_config()
-        
-        data, errors = self.processor.load_keyword_report(file_path)
-        
-        if errors:
-            QMessageBox.warning(self, "警告", f"加载完成，但有 {len(errors)} 个警告")
-        
-        if data:
-            self.optimizer.load_data(data)
-            self.current_keywords = self.optimizer.analyze_all_keywords()
-            
-            # 计算推荐阈值（保存到临时变量，在阈值设置中显示）
-            self.recommended_thresholds = self.optimizer.get_recommended_thresholds()
-            
-            # 更新推广计划下拉框
-            self.update_plan_combo()
-            
-            # 显示第一个推广计划的数据
-            if self.plan_combo.count() > 0:
-                self.plan_combo.setCurrentIndex(0)
-                # 手动触发 on_plan_changed
-                self.on_plan_changed(self.plan_combo.currentText())
-            
-            # 更新info_label显示文件名
-            file_name = os.path.basename(file_path)
-            self.info_label.setText(f"已加载: {file_name}")
-        else:
-            QMessageBox.critical(self, "加载失败", "没有有效数据")
-    
-    def update_plan_combo(self):
-        """更新推广计划下拉框"""
-        self.plan_combo.blockSignals(True)
-        self.plan_combo.clear()
-        
-        # 获取所有推广计划
-        plans = set()
-        for kw in self.current_keywords:
-            plan = kw.get('推广计划', '')
-            if plan:  # 只添加非空的推广计划
-                plans.add(plan)
-        
-        # 如果没有找到推广计划，使用默认值
-        if not plans:
-            plans = {'Uncategorized'}
-        
-        self.plan_combo.addItems(sorted(plans))
-        self.plan_combo.blockSignals(False)
-        
-        # 手动触发信号以显示第一个推广计划
-        if self.plan_combo.count() > 0:
-            self.plan_combo.setCurrentIndex(0)
-    
-    def on_plan_changed(self, plan_name):
-        """推广计划改变时的处理"""
-        if not plan_name or not self.current_keywords:
-            return
-        
-        # 筛选该推广计划的关键词
-        filtered_keywords = [kw for kw in self.current_keywords if kw.get('推广计划', '') == plan_name]
-        
-        # 如果没有找到匹配的关键词，显示所有关键词
-        if not filtered_keywords:
-            filtered_keywords = self.current_keywords
-        
-        # 更新表格
-        self.update_keywords_table(filtered_keywords)
-        
-        # 更新统计信息
-        total_cost = sum(kw.get('花费', 0) for kw in filtered_keywords)
-        total_revenue = sum(kw.get('总订单金额', 0) for kw in filtered_keywords)
-        roi = (total_revenue / total_cost) if total_cost > 0 else 0
-        
-        self.info_label.setText(
-            f"关键词数: {len(filtered_keywords)}          "
-            f"总花费: ¥{total_cost:.2f}          "
-            f"总订单金额: ¥{total_revenue:.2f}          "
-            f"投产比: {roi:.2f}"
-        )
-    
-    def update_keywords_table(self, keywords=None):
-        """更新关键词表"""
-        if keywords is None:
-            keywords = self.current_keywords
-        
-        self.keywords_table.setRowCount(len(keywords))
-        
-        for row, keyword in enumerate(keywords):
-            items = [
-                keyword.get('关键词', ''),
-                str(keyword.get('展现数', 0)),
-                f"{keyword.get('花费', 0):.2f}",
-                f"{keyword.get('点击率(%)', 0):.2f}",
-                f"{keyword.get('转化率(%)', 0):.2f}",
-                str(keyword.get('总订单行', 0)),
-                f"{keyword.get('总订单金额', 0):.2f}",
-                keyword.get('优化策略', '')
-            ]
-            
-            for col, item in enumerate(items):
-                table_item = QTableWidgetItem(item)
-                
-                # 为所有单元格添加 tooltip
-                table_item.setToolTip(item)
-                
-                # 第2到第7列（数值列）居右对齐
-                if col >= 1 and col <= 6:
-                    table_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-                
-                # 根据优化策略着色
-                strategy = keyword.get('优化策略', '')
-                if '删除' in strategy:
-                    table_item.setBackground(QColor(255, 200, 200))
-                elif '加价' in strategy or '保持' in strategy:
-                    table_item.setBackground(QColor(200, 255, 200))
-                elif '降价' in strategy:
-                    table_item.setBackground(QColor(255, 255, 200))
-                
-                self.keywords_table.setItem(row, col, table_item)
-    
-    def export_data(self):
-        """导出所有推广计划的表格为图片"""
-        if not self.current_keywords:
-            QMessageBox.warning(self, "导出失败", "没有数据可导出")
-            return
-        
-        # 选择导出路径
-        folder_path = QFileDialog.getExistingDirectory(
-            self, "选择导出路径"
-        )
-        
-        if not folder_path:
-            return
-        
-        try:
-            # 创建导出文件夹（使用工具名称）
-            export_folder = os.path.join(folder_path, "关键词分析")
-            if not os.path.exists(export_folder):
-                os.makedirs(export_folder)
-            
-            # 保存原始列宽
-            original_widths = []
-            header = self.keywords_table.horizontalHeader()
-            for col in range(self.keywords_table.columnCount()):
-                original_widths.append(self.keywords_table.columnWidth(col))
-            
-            # 获取所有推广计划
-            plans = set()
-            for kw in self.current_keywords:
-                plan = kw.get('推广计划', '')
-                if plan:
-                    plans.add(plan)
-            
-            if not plans:
-                plans = {'未分类'}
-            
-            # 为每个推广计划导出表格
-            for plan_name in sorted(plans):
-                # 筛选该推广计划的关键词
-                filtered_keywords = [kw for kw in self.current_keywords if kw.get('推广计划', '') == plan_name]
-                
-                if not filtered_keywords:
-                    continue
-                
-                # 临时更新表格显示该推广计划的数据
-                self.update_keywords_table(filtered_keywords)
-                
-                # 清除表格选中状态
-                self.keywords_table.clearSelection()
-                
-                # 调整列宽以适应内容
-                self.keywords_table.resizeColumnsToContents()
-                
-                # 计算表格的实际宽度（所有列的宽度之和）
-                total_width = sum(self.keywords_table.columnWidth(col) for col in range(self.keywords_table.columnCount())) + 1
-                
-                # 计算表格高度
-                header_height = self.keywords_table.horizontalHeader().height()
-                row_height = self.keywords_table.rowHeight(0) if self.keywords_table.rowCount() > 0 else 30
-                total_height = header_height + (self.keywords_table.rowCount() * row_height) + 1
-                
-                # 创建 QPixmap 用于绘制（使用实际内容宽度）
-                pixmap = QPixmap(total_width, total_height)
-                pixmap.fill(QColor(255, 255, 255))  # 白色背景
-                
-                # 使用 QPainter 绘制表格
-                painter = QPainter(pixmap)
-                self.keywords_table.render(painter)
-                painter.end()
-                
-                # 生成文件名（替换不合法字符）
-                safe_plan_name = plan_name.replace('/', '_').replace('\\', '_').replace(':', '_')
-                file_path = os.path.join(export_folder, f"{safe_plan_name}.png")
-                
-                # 保存图片
-                if not pixmap.save(file_path):
-                    QMessageBox.critical(self, "导出失败", f"无法保存 {plan_name} 的图片")
-                    return
-            
-            # 恢复原始列宽
-            for col in range(self.keywords_table.columnCount()):
-                self.keywords_table.setColumnWidth(col, original_widths[col])
-            
-            # 恢复显示当前推广计划
-            if self.plan_combo.count() > 0:
-                current_plan = self.plan_combo.currentText()
-                filtered_keywords = [kw for kw in self.current_keywords if kw.get('推广计划', '') == current_plan]
-                if not filtered_keywords:
-                    filtered_keywords = self.current_keywords
-                self.update_keywords_table(filtered_keywords)
-            
-            QMessageBox.information(self, "成功", f"已导出 {len(plans)} 个推广计划的表格到: {export_folder}")
-        except Exception as e:
-            QMessageBox.critical(self, "导出失败", f"导出出错: {str(e)}")
-    
-    def open_settings(self):
-        """打开设置对话框"""
-        dialog = SettingsDialog(self.config_manager, self, self.recommended_thresholds if hasattr(self, 'recommended_thresholds') else None)
-        if dialog.exec_() == QDialog.Accepted:
-            # 重新初始化 optimizer 使用新的阈值
-            config = self.config_manager.get_thresholds()
-            self.optimizer = KeywordOptimizer(config)
-            
-            # 如果已加载数据，重新分析
-            if self.current_keywords:
-                # 从 current_keywords 中恢复原始数据（去掉优化建议）
-                raw_data = []
-                for kw in self.current_keywords:
-                    raw_record = {
-                        '关键词': kw.get('关键词', ''),
-                        '推广计划': kw.get('推广计划', ''),
-                        '展现数': kw.get('展现数', 0),
-                        '花费': kw.get('花费', 0),
-                        '点击率(%)': kw.get('点击率(%)', 0),
-                        '转化率(%)': kw.get('转化率(%)', 0),
-                        '点击数': kw.get('点击数', 0),
-                        '总订单行': kw.get('总订单行', 0),
-                        '总订单金额': kw.get('总订单金额', 0),
-                    }
-                    raw_data.append(raw_record)
-                
-                # 重新加载数据并分析
-                self.optimizer.load_data(raw_data)
-                self.current_keywords = self.optimizer.analyze_all_keywords()
-                
-                # 更新推广计划下拉框
-                self.update_plan_combo()
-                
-                # 直接刷新表格
-                if self.plan_combo.count() > 0:
-                    plan_name = self.plan_combo.itemText(0)
-                    self.on_plan_changed(plan_name)
-                
-                QMessageBox.information(self, "成功", "阈值已更新，结果已刷新")
-    
-    def generate_box(self):
         """生成箱唛文件"""
         import pathlib
         
@@ -3627,7 +3437,7 @@ class RecognizeSettingsDialog(QDialog):
         super().__init__(parent)
         self.parent_gui = parent
         self.setWindowTitle("识别设置")
-        self.setFixedSize(380, 100)
+        self.resize(480, 190)
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
         self.center_on_screen()
         
@@ -3653,8 +3463,8 @@ class RecognizeSettingsDialog(QDialog):
     def init_ui(self):
         """初始化UI"""
         layout = QVBoxLayout()
-        layout.setSpacing(10)
-        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(8)
+        layout.setContentsMargins(16, 16, 16, 16)
         
         # 第一行：标签识别
         label_layout = QHBoxLayout()
@@ -3664,7 +3474,7 @@ class RecognizeSettingsDialog(QDialog):
         
         # 工作表选择
         label_layout.addWidget(QLabel("工作表:"), 0)
-        self.sheet_combo = QComboBox()
+        self.sheet_combo = ModernComboBox()
         # 获取所有工作表名称
         if self.parent_gui.current_excel_workbook:
             self.sheet_combo.addItems(self.parent_gui.current_excel_workbook.sheetnames)
@@ -3698,7 +3508,7 @@ class RecognizeSettingsDialog(QDialog):
         
         # 工作表选择
         box_layout.addWidget(QLabel("工作表:"), 0)
-        self.box_sheet_combo = QComboBox()
+        self.box_sheet_combo = ModernComboBox()
         # 获取所有工作表名称
         if self.parent_gui.current_excel_workbook:
             sheet_names = self.parent_gui.current_excel_workbook.sheetnames
@@ -3723,8 +3533,6 @@ class RecognizeSettingsDialog(QDialog):
         box_layout.addStretch()
         layout.addLayout(box_layout)
         
-        layout.addStretch()
-        
         # 按钮
         button_layout = QHBoxLayout()
         button_layout.setContentsMargins(0, 0, 0, 0)
@@ -3743,6 +3551,9 @@ class RecognizeSettingsDialog(QDialog):
         layout.addLayout(button_layout)
         
         self.setLayout(layout)
+        self.resize(self.width(), self.sizeHint().height())
+        self.center_on_screen()
+        self.setFixedSize(self.size())
     
     def center_on_screen(self):
         """将对话框居中显示在父窗口上"""
@@ -3816,8 +3627,18 @@ class RecognizeSettingsDialog(QDialog):
 
 
 def main():
+    QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
+    QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
     app = QApplication(sys.argv)
-    window = KeywordAnalyzerGUI()
+    app.setApplicationName(APP_NAME)
+    app_icon_path = _app_base_dir() / "assets" / "favicon.ico"
+    if app_icon_path.exists():
+        app.setWindowIcon(QIcon(str(app_icon_path)))
+    app.setStyle("Fusion")
+    app.setFont(QFont("Microsoft YaHei UI", 10))
+    app.setStyleSheet(_app_style_sheet())
+    install_pointer_cursors(app)
+    window = SupplierLabelGeneratorWindow()
     window.show()
     sys.exit(app.exec_())
 
@@ -3830,8 +3651,7 @@ class PropellerFileNameDialog(QDialog):
         self.existing_files = existing_files or []
         self.filename = None
         self.setWindowTitle("螺旋桨文件命名")
-        self.setGeometry(0, 0, 300, 80)
-        self.setFixedSize(300, 80)
+        self.resize(380, 150)
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
         self.center_on_screen()
         self.init_ui()
@@ -3853,7 +3673,7 @@ class PropellerFileNameDialog(QDialog):
     def init_ui(self):
         """初始化 UI"""
         layout = QVBoxLayout()
-        layout.setContentsMargins(10, 8, 10, 8)
+        layout.setContentsMargins(16, 16, 16, 16)
         layout.setSpacing(8)
         
         # 标签和输入框在同一行
@@ -3886,6 +3706,9 @@ class PropellerFileNameDialog(QDialog):
         layout.addLayout(button_layout)
         
         self.setLayout(layout)
+        self.resize(self.width(), self.sizeHint().height())
+        self.center_on_screen()
+        self.setFixedSize(self.size())
         self.filename_input.setFocus()
     
     def accept_filename(self):
@@ -3918,8 +3741,7 @@ class LabelDialog(QDialog):
         self.parent_gui = parent
         self.excel_data = None  # 存储导入的Excel数据
         self.setWindowTitle("新增标签")
-        self.setGeometry(0, 0, 450, 210)
-        self.setFixedSize(450, 210)
+        self.resize(600, 360)
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
         self.center_on_screen()
         self.init_ui()
@@ -3941,7 +3763,7 @@ class LabelDialog(QDialog):
     def init_ui(self):
         """初始化 UI"""
         layout = QVBoxLayout()
-        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setContentsMargins(16, 16, 16, 16)
         layout.setSpacing(8)
         
         # 输入表单
@@ -3951,14 +3773,14 @@ class LabelDialog(QDialog):
         
         # 筛选类型
         form_layout.addWidget(QLabel("类型:"), 0, 0)
-        self.label_type_input = QComboBox()
+        self.label_type_input = ModernComboBox()
         self.label_type_input.addItems(["3C", "玩具", "螺旋桨"])
         self.label_type_input.currentTextChanged.connect(self.on_type_changed)
         form_layout.addWidget(self.label_type_input, 0, 1)
         
         # 品牌
         form_layout.addWidget(QLabel("品牌:"), 1, 0)
-        self.label_brand_input = QComboBox()
+        self.label_brand_input = ModernComboBox()
         form_layout.addWidget(self.label_brand_input, 1, 1)
         
         # 产品名称
@@ -3989,8 +3811,10 @@ class LabelDialog(QDialog):
         sn_layout.setSpacing(0)  # 改为 0，然后手动添加间距
         
         sn_layout.addWidget(QLabel("类型:"))
-        self.label_sn_prefix = QComboBox()
+        self.label_sn_prefix = ModernComboBox()
+        self.label_sn_prefix.setProperty("compact", True)
         self.label_sn_prefix.addItems(["SG", "NB"])
+        self.label_sn_prefix.setFixedWidth(90)
         sn_layout.addWidget(self.label_sn_prefix)
         sn_layout.addSpacing(10)
         
@@ -4005,7 +3829,7 @@ class LabelDialog(QDialog):
         sn_layout.addWidget(QLabel("年份:"))
         self.label_sn_year = QLineEdit()
         self.label_sn_year.setPlaceholderText("YYYY")
-        self.label_sn_year.setMaximumWidth(60)
+        self.label_sn_year.setFixedWidth(60)
         self.label_sn_year.setMaxLength(4)
         from datetime import datetime
         current_year = datetime.now().year
@@ -4016,7 +3840,7 @@ class LabelDialog(QDialog):
         sn_layout.addWidget(QLabel("日期:"))
         self.label_sn_date = QLineEdit()
         self.label_sn_date.setPlaceholderText("MMDD")
-        self.label_sn_date.setMaximumWidth(50)
+        self.label_sn_date.setFixedWidth(60)
         self.label_sn_date.setMaxLength(4)
         self.label_sn_date.setText(datetime.now().strftime("%m%d"))
         sn_layout.addWidget(self.label_sn_date)
@@ -4054,6 +3878,9 @@ class LabelDialog(QDialog):
         self.enable_form_controls()
         
         self.setLayout(layout)
+        self.resize(self.width(), self.sizeHint().height())
+        self.center_on_screen()
+        self.setFixedSize(self.size())
     
     def disable_form_controls(self):
         """禁用所有表单控件"""
@@ -4731,13 +4558,25 @@ class LabelDialog(QDialog):
 
 class BoxDialog(QDialog):
     """箱唛生成对话框"""
+
+    REGULAR_CITY_OPTIONS = [
+        ("1", "北京"),
+        ("2", "上海"),
+        ("3", "广州"),
+        ("4", "成都"),
+        ("5", "武汉"),
+        ("6", "沈阳"),
+        ("7", "西安"),
+        ("8", "德州"),
+    ]
+    SHANTOU_CITY_OPTION = ("shantou_b", "汕头")
+    SHANTOU_SUPPLIER = "汕头市淘淘汇贸易有限公司"
     
     def __init__(self, parent=None):
         super().__init__(parent)
         self.parent_gui = parent
         self.setWindowTitle("新增箱唛")
-        self.setGeometry(0, 0, 350, 180)
-        self.setFixedSize(350, 180)
+        self.resize(400, 320)
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
         self.center_on_screen()
         self.init_ui()
@@ -4759,7 +4598,7 @@ class BoxDialog(QDialog):
     def init_ui(self):
         """初始化 UI"""
         layout = QVBoxLayout()
-        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setContentsMargins(16, 16, 16, 16)
         layout.setSpacing(8)
         
         # 箱唛输入表单
@@ -4769,50 +4608,53 @@ class BoxDialog(QDialog):
         
         # 筛选类型
         box_form_layout.addWidget(QLabel("类型:"), 0, 0)
-        self.box_type_input = QComboBox()
+        self.box_type_input = ModernComboBox()
         self.box_type_input.addItems(["3C", "玩具"])
-        self.box_type_input.currentTextChanged.connect(self.on_type_changed)
         box_form_layout.addWidget(self.box_type_input, 0, 1)
         
         # 采购单号
-        box_form_layout.addWidget(QLabel("采购单号:"), 1, 0)
+        self.box_po_label = QLabel("采购单号:")
+        box_form_layout.addWidget(self.box_po_label, 1, 0)
         self.box_po_input = QLineEdit()
         self.box_po_input.setPlaceholderText("7到20位数字")
-        self.box_po_input.setMaxLength(12)
+        self.box_po_input.setMaxLength(20)
         box_form_layout.addWidget(self.box_po_input, 1, 1)
         
         # 目的仓
-        box_form_layout.addWidget(QLabel("目的仓:"), 2, 0)
+        self.box_warehouse_label = QLabel("目的仓:")
+        box_form_layout.addWidget(self.box_warehouse_label, 2, 0)
         self.box_warehouse_input = QLineEdit()
         self.box_warehouse_input.setPlaceholderText("例如: 仓库A")
         box_form_layout.addWidget(self.box_warehouse_input, 2, 1)
         
         # 目的城市
         box_form_layout.addWidget(QLabel("目的城市:"), 3, 0)
-        self.box_city_input = QComboBox()
-        city_options = [
-            ("1", "北京"),
-            ("2", "上海"),
-            ("3", "广州"),
-            ("4", "成都"),
-            ("5", "武汉"),
-            ("6", "沈阳"),
-            ("7", "西安"),  # 陕西省 西安市
-            ("8", "德州")
-        ]
-        for code, label in city_options:
+        self.box_city_input = ModernComboBox()
+        for code, label in self.REGULAR_CITY_OPTIONS + [self.SHANTOU_CITY_OPTION]:
             self.box_city_input.addItem(label, code)
         box_form_layout.addWidget(self.box_city_input, 3, 1)
         
         # 商家名称
-        box_form_layout.addWidget(QLabel("商家名称:"), 4, 0)
+        self.box_vendor_label = QLabel("商家名称:")
+        box_form_layout.addWidget(self.box_vendor_label, 4, 0)
         self.box_vendor_input = QLineEdit()
         self.box_vendor_input.setPlaceholderText("根据类型自动填充，可手动修改")
         self.box_vendor_input.setText("ststthmyyx")
         box_form_layout.addWidget(self.box_vendor_input, 4, 1)
+
+        # 汕头 B 仓专用字段，普通城市下隐藏
+        self.box_demand_label = QLabel("需求单号:")
+        self.box_demand_input = QLineEdit()
+        self.box_demand_input.setPlaceholderText("PR+数字，可留空")
+        self.box_demand_input.setMaxLength(23)
+        box_form_layout.addWidget(self.box_demand_label, 5, 0)
+        box_form_layout.addWidget(self.box_demand_input, 5, 1)
+        self.box_demand_label.hide()
+        self.box_demand_input.hide()
         
         # 批次和生成按钮
-        box_form_layout.addWidget(QLabel("批次:"), 5, 0)
+        self.box_seq_label = QLabel("批次:")
+        box_form_layout.addWidget(self.box_seq_label, 6, 0)
         batch_button_layout = QHBoxLayout()
         batch_button_layout.setContentsMargins(0, 0, 0, 0)
         batch_button_layout.setSpacing(10)
@@ -4830,17 +4672,100 @@ class BoxDialog(QDialog):
         export_btn.clicked.connect(self.export_box)
         batch_button_layout.addWidget(export_btn)
         
-        box_form_layout.addLayout(batch_button_layout, 5, 1)
+        box_form_layout.addLayout(batch_button_layout, 6, 1)
         
         layout.addLayout(box_form_layout)
         self.setLayout(layout)
+        self.box_type_input.currentTextChanged.connect(self.on_type_changed)
+        self.box_city_input.currentTextChanged.connect(self.on_city_changed)
+        self._apply_city_mode()
+        self.resize(self.width(), self.sizeHint().height())
+        self.center_on_screen()
+        self.setFixedSize(self.size())
+
+    def _is_shantou_mode(self):
+        """仅 3C 类型下的汕头使用汕头 B 仓箱唛模式。"""
+        return (
+            self.box_type_input.currentText() == "3C"
+            and self.box_city_input.currentData() == self.SHANTOU_CITY_OPTION[0]
+        )
+
+    def _set_city_options(self, include_shantou):
+        """按类型更新目的城市，玩具不显示汕头。"""
+        current_city = self.box_city_input.currentText()
+        city_options = list(self.REGULAR_CITY_OPTIONS)
+        if include_shantou:
+            city_options.append(self.SHANTOU_CITY_OPTION)
+
+        self.box_city_input.blockSignals(True)
+        self.box_city_input.clear()
+        for code, label in city_options:
+            self.box_city_input.addItem(label, code)
+
+        labels = [label for _, label in city_options]
+        target_index = labels.index(current_city) if current_city in labels else 0
+        self.box_city_input.setCurrentIndex(target_index)
+        self.box_city_input.blockSignals(False)
+
+    def _resize_to_content(self):
+        """切换模式后调整高度，同时保持子窗口不可拖拽缩放。"""
+        current_width = self.width()
+        self.setMinimumSize(0, 0)
+        self.setMaximumSize(16777215, 16777215)
+        self.layout().invalidate()
+        self.layout().activate()
+        target_height = self.sizeHint().height()
+        self.resize(current_width, target_height)
+        self.setFixedSize(current_width, target_height)
+        self.center_on_screen()
+
+    def _apply_city_mode(self):
+        """根据是否为汕头切换字段名称、默认值和额外行。"""
+        shantou_mode = self._is_shantou_mode()
+
+        self.box_po_label.setText("EPL采购单号:" if shantou_mode else "采购单号:")
+        self.box_warehouse_label.setText("入库库房:" if shantou_mode else "目的仓:")
+        self.box_vendor_label.setText("供应商:" if shantou_mode else "商家名称:")
+        self.box_seq_label.setText("产品规格:" if shantou_mode else "批次:")
+
+        self.box_demand_label.setVisible(shantou_mode)
+        self.box_demand_input.setVisible(shantou_mode)
+
+        if shantou_mode:
+            self.box_po_input.setPlaceholderText("EPL+数字，可留空")
+            self.box_po_input.setMaxLength(23)
+            self.box_warehouse_input.setPlaceholderText("请输入入库库房")
+            self.box_vendor_input.setPlaceholderText("请输入供应商")
+            self.box_vendor_input.setText(self.SHANTOU_SUPPLIER)
+            self.box_seq_input.setPlaceholderText("请输入产品规格")
+            self.box_seq_input.setText("混箱")
+            self.box_seq_input.setMaxLength(30)
+            self.box_seq_input.setMaximumWidth(16777215)
+        else:
+            self.box_po_input.setPlaceholderText("7到20位数字")
+            self.box_po_input.setMaxLength(20)
+            self.box_warehouse_input.setPlaceholderText("例如: 仓库A")
+            self.box_vendor_input.setPlaceholderText("根据类型自动填充，可手动修改")
+            if self.box_type_input.currentText() == "玩具":
+                self.box_vendor_input.setText("stsnb")
+            else:
+                self.box_vendor_input.setText("ststthmyyx")
+            self.box_seq_input.setPlaceholderText("默认1")
+            self.box_seq_input.setText("1")
+            self.box_seq_input.setMaxLength(3)
+            self.box_seq_input.setMaximumWidth(60)
+
+        if self.layout():
+            self._resize_to_content()
     
     def on_type_changed(self, type_name):
         """类型改变时的处理"""
-        if type_name == "3C":
-            self.box_vendor_input.setText("ststthmyyx")
-        elif type_name == "玩具":
-            self.box_vendor_input.setText("stsnb")
+        self._set_city_options(include_shantou=type_name == "3C")
+        self._apply_city_mode()
+
+    def on_city_changed(self, _city_name):
+        """城市改变时切换普通箱唛或汕头 B 仓箱唛表单。"""
+        self._apply_city_mode()
     
     def export_box(self):
         """导出箱唛到桌面"""
@@ -4883,6 +4808,9 @@ class BoxDialog(QDialog):
     def generate_box_and_get_path(self):
         """生成箱唛并返回生成的文件路径"""
         import pathlib
+
+        if self._is_shantou_mode():
+            return self._generate_shantou_box_and_get_path()
         
         po_num = self.box_po_input.text().strip()
         warehouse = self.box_warehouse_input.text().strip()
@@ -4956,6 +4884,56 @@ class BoxDialog(QDialog):
             print(f"[DEBUG] 异常: {error_trace}")
             QMessageBox.critical(self, "错误", f"生成箱唛出错: {str(e)}")
             return None
+
+    def _generate_shantou_box_and_get_path(self):
+        """使用现有汕头 B 仓模板生成手动新增的汕头箱唛。"""
+        supplier = self.box_vendor_input.text().strip()
+        inbound_warehouse = self.box_warehouse_input.text().strip()
+        epl_purchase_no = self.box_po_input.text().strip()
+        demand_no = self.box_demand_input.text().strip()
+        product_spec = self.box_seq_input.text().strip()
+
+        if not all([supplier, inbound_warehouse, product_spec]):
+            QMessageBox.warning(self, "警告", "请填写供应商、入库库房和产品规格")
+            return None
+
+        try:
+            carton_mark_dir = (
+                _app_base_dir() / "templates" / "箱唛模板" / "3C箱唛"
+            )
+            carton_mark_dir.mkdir(parents=True, exist_ok=True)
+
+            target_filename = "1.汕头B仓箱唛.pld"
+            target_path = carton_mark_dir / target_filename
+            if target_path.exists():
+                QMessageBox.warning(
+                    self,
+                    "文件已存在",
+                    f"文件 {target_filename} 已存在，禁止覆盖。",
+                )
+                return None
+
+            generator = ShantouBCartonMarkGenerator()
+            if generator.generate(
+                seq_num=1,
+                city="汕头",
+                supplier=supplier,
+                inbound_warehouse=inbound_warehouse,
+                demand_no=demand_no,
+                epl_purchase_no=epl_purchase_no,
+                product_spec=product_spec,
+                output_dir=str(carton_mark_dir),
+            ):
+                return target_path
+
+            QMessageBox.critical(self, "失败", "生成汕头 B 仓箱唛失败，请检查输入数据")
+            return None
+        except ShantouBValidationError as e:
+            QMessageBox.critical(self, "格式校验失败", str(e))
+            return None
+        except Exception as e:
+            QMessageBox.critical(self, "错误", f"生成汕头 B 仓箱唛出错: {str(e)}")
+            return None
     
     def generate_box(self):
         """生成箱唛（添加模板按钮）"""
@@ -4997,6 +4975,9 @@ class BoxDialog(QDialog):
 
 class SheetMappingDialog(QDialog):
     """工作表映射设置对话框"""
+
+    VISIBLE_MAPPING_ROWS = 8
+    MAPPING_ROW_HEIGHT = 38
     
     def __init__(self, parent=None, mapping=None):
         super().__init__(parent)
@@ -5017,8 +4998,7 @@ class SheetMappingDialog(QDialog):
         self.is_locked = True
         
         self.setWindowTitle("工作表映射设置")
-        self.setGeometry(0, 0, 400, 300)
-        self.setFixedSize(400, 260)
+        self.resize(560, 460)
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
         self.center_on_screen()
         self.init_ui()
@@ -5041,13 +5021,13 @@ class SheetMappingDialog(QDialog):
     def init_ui(self):
         """初始化UI"""
         layout = QVBoxLayout()
-        layout.setContentsMargins(10, 10, 10, 10)
-        layout.setSpacing(10)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(8)
         
         # 类型选择和锁定按钮
         type_layout = QHBoxLayout()
         type_layout.addWidget(QLabel("类型:"))
-        self.type_combo = QComboBox()
+        self.type_combo = ModernComboBox()
         self.type_combo.addItems(["3C", "玩具", "螺旋桨"])
         self.type_combo.currentTextChanged.connect(self.on_type_changed)
         type_layout.addWidget(self.type_combo)
@@ -5059,17 +5039,18 @@ class SheetMappingDialog(QDialog):
         self.lock_btn.clicked.connect(self.toggle_lock)
         type_layout.addWidget(self.lock_btn)
         
-        layout.addLayout(type_layout)
+        layout.addLayout(type_layout, 0)
         
         # 品牌和工作表映射表
         self.mapping_table = QTableWidget()
+        self.mapping_table.setObjectName("mappingTable")
         self.mapping_table.setColumnCount(3)
         self.mapping_table.setHorizontalHeaderLabels(["品牌/商品编号", "工作表/模板文件名", "规则"])
         self.mapping_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Fixed)
         self.mapping_table.setColumnWidth(0, 100)
         self.mapping_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
         self.mapping_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Fixed)
-        self.mapping_table.setColumnWidth(2, 120)
+        self.mapping_table.setColumnWidth(2, 180)
         # 隐藏行号（序号列）
         self.mapping_table.verticalHeader().setVisible(False)
         # 禁止编辑
@@ -5078,7 +5059,7 @@ class SheetMappingDialog(QDialog):
         self.mapping_table.setSelectionBehavior(QTableWidget.SelectItems)
         self.mapping_table.itemClicked.connect(self.on_table_item_clicked)
         self.mapping_table.itemDoubleClicked.connect(self.on_table_item_double_clicked)
-        layout.addWidget(self.mapping_table)
+        layout.addWidget(self.mapping_table, 1)
         
         # 按钮行
         button_layout = QHBoxLayout()
@@ -5101,13 +5082,48 @@ class SheetMappingDialog(QDialog):
         self.ok_btn.clicked.connect(self.save_and_close)
         button_layout.addWidget(self.ok_btn)
         
-        layout.addLayout(button_layout)
+        layout.addLayout(button_layout, 0)
         
         self.setLayout(layout)
         
         # 初始化显示
         self.on_type_changed("3C")
-    
+        self._fit_table_to_visible_rows()
+        self.layout().activate()
+        self.resize(self.width(), self.sizeHint().height())
+        self.center_on_screen()
+        self.setFixedSize(self.size())
+
+    def _fit_table_to_visible_rows(self):
+        """让表格区域刚好容纳表头和八行映射。"""
+        self.mapping_table.ensurePolished()
+        header_height = self.mapping_table.horizontalHeader().sizeHint().height()
+        frame_height = self.mapping_table.frameWidth() * 2
+        visible_rows_height = self.VISIBLE_MAPPING_ROWS * self.MAPPING_ROW_HEIGHT
+        self.mapping_table.setFixedHeight(
+            header_height + visible_rows_height + frame_height
+        )
+
+    def _set_rule_cell_widget(self, row, rule_combo):
+        """在规则单元格内为下拉框保留一致的上下间距。"""
+        container = QWidget()
+        container.setObjectName("ruleCell")
+        cell_layout = QVBoxLayout(container)
+        cell_layout.setContentsMargins(2, 4, 2, 4)
+        cell_layout.setSpacing(0)
+        cell_layout.addWidget(rule_combo)
+        self.mapping_table.setRowHeight(row, self.MAPPING_ROW_HEIGHT)
+        self.mapping_table.setCellWidget(row, 2, container)
+
+    def _rule_combo_at(self, row):
+        """返回规则单元格中的下拉框。"""
+        cell_widget = self.mapping_table.cellWidget(row, 2)
+        if isinstance(cell_widget, QComboBox):
+            return cell_widget
+        if cell_widget:
+            return cell_widget.findChild(QComboBox)
+        return None
+
     def on_type_changed(self, type_name):
         """类型改变时更新表格"""
         try:
@@ -5143,10 +5159,10 @@ class SheetMappingDialog(QDialog):
                     self.mapping_table.setItem(row, 1, value_item)
                     
                     # 规则列下拉框（螺旋桨暂无规则，设置为禁用）
-                    rule_combo = QComboBox()
+                    rule_combo = ModernComboBox()
                     rule_combo.addItem("无规则")
                     rule_combo.setEnabled(False)  # 禁用下拉框，显示为灰色
-                    self.mapping_table.setCellWidget(row, 2, rule_combo)
+                    self._set_rule_cell_widget(row, rule_combo)
                     
                     row += 1
                 else:
@@ -5167,7 +5183,7 @@ class SheetMappingDialog(QDialog):
                             self.mapping_table.setItem(row, 1, sheet_item)
                             
                             # 规则列下拉框
-                            rule_combo = QComboBox()
+                            rule_combo = ModernComboBox()
                             rule_combo.addItem("无规则")
                             rule_combo.addItem("跳过红色文字行")
                             
@@ -5179,7 +5195,7 @@ class SheetMappingDialog(QDialog):
                                 if rule_code == "skip_red_text":
                                     rule_combo.setCurrentText("跳过红色文字行")
                             
-                            self.mapping_table.setCellWidget(row, 2, rule_combo)
+                            self._set_rule_cell_widget(row, rule_combo)
                             
                             row += 1
                     else:
@@ -5193,7 +5209,7 @@ class SheetMappingDialog(QDialog):
                         self.mapping_table.setItem(row, 1, sheet_item)
                         
                         # 规则列下拉框
-                        rule_combo = QComboBox()
+                        rule_combo = ModernComboBox()
                         rule_combo.addItem("无规则")
                         rule_combo.addItem("跳过红色文字行")
                         
@@ -5205,7 +5221,7 @@ class SheetMappingDialog(QDialog):
                             if rule_code == "skip_red_text":
                                 rule_combo.setCurrentText("跳过红色文字行")
                         
-                        self.mapping_table.setCellWidget(row, 2, rule_combo)
+                        self._set_rule_cell_widget(row, rule_combo)
                         
                         row += 1
         except Exception as e:
@@ -5487,7 +5503,7 @@ class SheetMappingDialog(QDialog):
             sheet = col1_item.text()
             
             # 从下拉框中获取规则
-            rule_combo = self.mapping_table.cellWidget(row, 2)
+            rule_combo = self._rule_combo_at(row)
             if rule_combo and isinstance(rule_combo, QComboBox):
                 rule_display = rule_combo.currentText()
                 
@@ -5521,8 +5537,7 @@ class OrderFormDeliveryDialog(QDialog):
         self.cities = cities
         self.delivery_days = {}
         self.setWindowTitle("设置预计到货日期")
-        self.setGeometry(0, 0, 400, 300)
-        self.setFixedSize(400, 300)
+        self.resize(440, 400)
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
         self.center_on_screen()
         self.init_ui()
@@ -5544,6 +5559,8 @@ class OrderFormDeliveryDialog(QDialog):
     def init_ui(self):
         """初始化 UI"""
         main_layout = QVBoxLayout()
+        main_layout.setContentsMargins(16, 16, 16, 16)
+        main_layout.setSpacing(8)
         
         # 说明文字
         info_label = QLabel("请为每个城市设置预计到货日期（当前时间+N天）:")
@@ -5595,6 +5612,9 @@ class OrderFormDeliveryDialog(QDialog):
         main_layout.addLayout(button_layout)
         
         self.setLayout(main_layout)
+        self.resize(self.width(), min(400, self.sizeHint().height()))
+        self.center_on_screen()
+        self.setFixedSize(self.size())
     
     def save_delivery_days(self):
         """保存预计到货日期"""
@@ -5607,154 +5627,6 @@ class OrderFormDeliveryDialog(QDialog):
         return self.delivery_days
 
 
-class SettingsDialog(QDialog):
-    """设置对话框"""
-    
-    def __init__(self, config_manager, parent=None, recommended=None):
-        super().__init__(parent)
-        self.config_manager = config_manager
-        self.recommended = recommended or {}
-        self.setWindowTitle("阈值设置")
-        self.setGeometry(0, 0, 300, 140)
-        self.setFixedSize(300, 140)
-        # 移除问号按钮
-        self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
-        self.center_on_screen()
-        self.init_ui()
-    
-    def center_on_screen(self):
-        """将窗口居中显示在父窗口上"""
-        if self.parent():
-            parent_geometry = self.parent().geometry()
-            x = parent_geometry.x() + (parent_geometry.width() - self.width()) // 2
-            y = parent_geometry.y() + (parent_geometry.height() - self.height()) // 2
-            self.move(x, y)
-        else:
-            screen = self.screen()
-            screen_geometry = screen.geometry()
-            x = (screen_geometry.width() - self.width()) // 2
-            y = (screen_geometry.height() - self.height()) // 2
-            self.move(x, y)
-    
-    def init_ui(self):
-        """初始化 UI"""
-        main_layout = QVBoxLayout()
-        
-        # 获取当前配置
-        config = self.config_manager.get_thresholds()
-        
-        # 设置项布局
-        settings_layout = QGridLayout()
-        settings_layout.setSpacing(5)
-        
-        row = 0
-        
-        # 展现数阈值
-        settings_layout.addWidget(QLabel("展现数:"), row, 0)
-        self.impression_spin = QSpinBox()
-        self.impression_spin.setMaximum(999999)
-        self.impression_spin.setValue(config['impression_threshold'])
-        settings_layout.addWidget(self.impression_spin, row, 1)
-        if self.recommended:
-            rec_text = f"推荐值: {self.recommended.get('impression_threshold', 100)}"
-            settings_layout.addWidget(QLabel(rec_text), row, 2)
-        row += 1
-        
-        # 花费阈值
-        settings_layout.addWidget(QLabel("花费:"), row, 0)
-        self.cost_spin = QDoubleSpinBox()
-        self.cost_spin.setMaximum(999999)
-        self.cost_spin.setValue(config['cost_threshold'])
-        settings_layout.addWidget(self.cost_spin, row, 1)
-        if self.recommended:
-            rec_text = f"推荐值: {self.recommended.get('cost_threshold', 50):.2f}"
-            settings_layout.addWidget(QLabel(rec_text), row, 2)
-        row += 1
-        
-        # 点击率阈值
-        settings_layout.addWidget(QLabel("点击率 (%):"), row, 0)
-        self.ctr_spin = QDoubleSpinBox()
-        self.ctr_spin.setMaximum(100)
-        self.ctr_spin.setDecimals(2)
-        self.ctr_spin.setValue(config['ctr_threshold'])
-        settings_layout.addWidget(self.ctr_spin, row, 1)
-        if self.recommended:
-            rec_text = f"推荐值: {self.recommended.get('ctr_threshold', 3.0):.2f}%"
-            settings_layout.addWidget(QLabel(rec_text), row, 2)
-        row += 1
-        
-        # 转化率阈值
-        settings_layout.addWidget(QLabel("转化率 (%):"), row, 0)
-        self.conversion_spin = QDoubleSpinBox()
-        self.conversion_spin.setMaximum(100)
-        self.conversion_spin.setDecimals(2)
-        self.conversion_spin.setValue(config['conversion_threshold'])
-        settings_layout.addWidget(self.conversion_spin, row, 1)
-        if self.recommended:
-            rec_text = f"推荐值: {self.recommended.get('conversion_threshold', 1.0):.2f}%"
-            settings_layout.addWidget(QLabel(rec_text), row, 2)
-        
-        # 设置第2列伸展
-        settings_layout.setColumnStretch(1, 1)
-        
-        main_layout.addLayout(settings_layout)
-        main_layout.addStretch()
-        
-        # 按钮布局
-        button_layout = QHBoxLayout()
-        
-        reset_btn = QPushButton("恢复默认")
-        reset_btn.clicked.connect(self.reset_defaults)
-        button_layout.addWidget(reset_btn)
-        
-        if self.recommended:
-            use_rec_btn = QPushButton("使用推荐值")
-            use_rec_btn.clicked.connect(self.use_recommended)
-            button_layout.addWidget(use_rec_btn)
-        
-        button_layout.addStretch()
-        
-        ok_btn = QPushButton("确定")
-        ok_btn.clicked.connect(self.save_settings)
-        button_layout.addWidget(ok_btn)
-        
-        main_layout.addLayout(button_layout)
-        
-        self.setLayout(main_layout)
-    
-    def reset_defaults(self):
-        """恢复默认值"""
-        from main.common.config import ConfigManager
-        defaults = ConfigManager.DEFAULT_CONFIG
-        self.impression_spin.setValue(defaults['impression_threshold'])
-        self.cost_spin.setValue(defaults['cost_threshold'])
-        self.ctr_spin.setValue(defaults['ctr_threshold'])
-        self.conversion_spin.setValue(defaults['conversion_threshold'])
-    
-    def use_recommended(self):
-        """使用推荐值"""
-        if self.recommended:
-            self.impression_spin.setValue(self.recommended.get('impression_threshold', 100))
-            self.cost_spin.setValue(self.recommended.get('cost_threshold', 50))
-            self.ctr_spin.setValue(self.recommended.get('ctr_threshold', 3.0))
-            self.conversion_spin.setValue(self.recommended.get('conversion_threshold', 1.0))
-    
-    def save_settings(self):
-        """保存设置"""
-        thresholds = {
-            'impression_threshold': self.impression_spin.value(),
-            'cost_threshold': self.cost_spin.value(),
-            'ctr_threshold': self.ctr_spin.value(),
-            'conversion_threshold': self.conversion_spin.value(),
-        }
-        
-        if self.config_manager.set_thresholds(thresholds):
-            QMessageBox.information(self, "成功", "阈值已保存")
-            self.accept()
-        else:
-            QMessageBox.critical(self, "失败", "保存阈值失败")
-
-
 class AppSettingsDialog(QDialog):
     """全局设置对话框"""
     
@@ -5765,8 +5637,7 @@ class AppSettingsDialog(QDialog):
         self.config_manager = config_manager
         self.release_date = "未知"  # 发布日期，默认为未知
         self.setWindowTitle("全局设置")
-        self.setGeometry(0, 0, 380, 170)
-        self.setFixedSize(380, 170)
+        self.resize(420, 280)
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
         self.center_on_screen()
         self.init_ui()
@@ -5789,12 +5660,21 @@ class AppSettingsDialog(QDialog):
         """初始化 UI"""
         main_layout = QVBoxLayout()
         main_layout.setSpacing(10)
-        main_layout.setContentsMargins(15, 15, 15, 15)
+        main_layout.setContentsMargins(16, 16, 16, 16)
         
         # 版本信息
-        version_group = QGroupBox("版本信息")
+        version_group = QFrame()
+        version_group.setObjectName("sectionCard")
+        version_card_layout = QVBoxLayout(version_group)
+        version_card_layout.setContentsMargins(16, 16, 16, 16)
+        version_card_layout.setSpacing(12)
+        version_title = QLabel("版本信息")
+        version_title.setObjectName("sectionTitle")
+        version_card_layout.addWidget(version_title, 0, Qt.AlignLeft)
+
         version_layout = QVBoxLayout()
-        version_layout.setSpacing(5)
+        version_layout.setContentsMargins(0, 0, 0, 0)
+        version_layout.setSpacing(8)
         
         version_info_layout = QHBoxLayout()
         version_info_layout.addStretch()
@@ -5808,12 +5688,22 @@ class AppSettingsDialog(QDialog):
         check_update_btn.clicked.connect(self.check_for_updates)
         version_layout.addWidget(check_update_btn)
         
-        version_group.setLayout(version_layout)
+        version_card_layout.addLayout(version_layout)
         main_layout.addWidget(version_group)
         
         # 导出路径设置
-        path_group = QGroupBox("导出路径")
+        path_group = QFrame()
+        path_group.setObjectName("sectionCard")
+        path_card_layout = QVBoxLayout(path_group)
+        path_card_layout.setContentsMargins(16, 16, 16, 16)
+        path_card_layout.setSpacing(12)
+        path_title = QLabel("导出路径")
+        path_title.setObjectName("sectionTitle")
+        path_card_layout.addWidget(path_title, 0, Qt.AlignLeft)
+
         path_layout = QHBoxLayout()
+        path_layout.setContentsMargins(0, 0, 0, 0)
+        path_layout.setSpacing(8)
         
         self.path_input = QLineEdit()
         self.path_input.setText(self.export_path)
@@ -5824,10 +5714,13 @@ class AppSettingsDialog(QDialog):
         browse_btn.clicked.connect(self.browse_export_path)
         path_layout.addWidget(browse_btn)
         
-        path_group.setLayout(path_layout)
+        path_card_layout.addLayout(path_layout)
         main_layout.addWidget(path_group)
         
         self.setLayout(main_layout)
+        self.resize(self.width(), self.sizeHint().height())
+        self.center_on_screen()
+        self.setFixedSize(self.size())
     
     def browse_export_path(self):
         """浏览导出路径"""
